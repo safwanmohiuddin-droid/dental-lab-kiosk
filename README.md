@@ -7,6 +7,7 @@
 An open-source, self-hosted kiosk that shows dental labs which department consumes the most
 material, what it costs, and who took it.
 
+[![CI](https://github.com/safwanmohiuddin-droid/dental-lab-kiosk/actions/workflows/ci.yml/badge.svg)](https://github.com/safwanmohiuddin-droid/dental-lab-kiosk/actions/workflows/ci.yml)
 ![Status](https://img.shields.io/badge/status-early%20development-orange)
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![Django](https://img.shields.io/badge/django-5.2%20LTS-0C4B33)
@@ -105,7 +106,7 @@ The full plan lives in [PLAN.md](PLAN.md).
 Requirements: [uv](https://docs.astral.sh/uv/) and PostgreSQL 16, either with Docker (`docker compose up -d`) or a native install. Set `DATABASE_URL` in `.env` to match.
 
 ```bash
-git clone https://github.com/<your-account>/dental-lab-kiosk.git
+git clone https://github.com/safwanmohiuddin-droid/dental-lab-kiosk.git
 cd dental-lab-kiosk
 cp .env.example .env        # set SECRET_KEY
 docker compose up -d        # PostgreSQL 16
