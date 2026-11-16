@@ -1,0 +1,15 @@
+# Local development database. Production compose comes in Phase 9.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: kiosk
+      POSTGRES_PASSWORD: kiosk
+      POSTGRES_DB: kiosk
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
