@@ -86,8 +86,8 @@ cause in [docs/BUGS.md](docs/BUGS.md).
 
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Project foundations, CI, decision records | 🚧 In progress |
-| 1 | Data model and admin | |
+| 0 | Project foundations, CI, decision records | ✅ Done |
+| 1 | Data model and admin | ⏳ Next |
 | 2 | Stock ledger with locking and property-based tests | |
 | 3 | Excel import | |
 | 4 | Employee PIN and personal login | |
@@ -102,7 +102,7 @@ The full plan lives in [PLAN.md](PLAN.md).
 
 ## Getting started (development)
 
-Requirements: [uv](https://docs.astral.sh/uv/) and Docker (or any PostgreSQL 14+).
+Requirements: [uv](https://docs.astral.sh/uv/) and PostgreSQL 16, either with Docker (`docker compose up -d`) or a native install. Set `DATABASE_URL` in `.env` to match.
 
 ```bash
 git clone https://github.com/<your-account>/dental-lab-kiosk.git

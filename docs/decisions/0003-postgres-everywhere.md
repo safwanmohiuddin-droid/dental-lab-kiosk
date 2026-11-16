@@ -1,6 +1,6 @@
 # 0003. PostgreSQL in dev, test and prod
 
-- Status: Accepted (owner, 2026-11-16)
+- Status: Accepted (owner, 2026-11-16), local-dev part amended by [0015](0015-native-postgres-for-local-dev.md)
 - Date: 2026-11-16
 
 ## Context

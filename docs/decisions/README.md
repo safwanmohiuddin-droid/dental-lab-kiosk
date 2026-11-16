@@ -9,7 +9,7 @@ Status: `Proposed` (my default, waiting on owner) · `Accepted` · `Superseded b
 |---|---|---|
 | [0001](0001-record-decisions.md) | Record decisions as ADRs | Accepted |
 | [0002](0002-django-htmx-monolith.md) | Django + HTMX monolith | Accepted |
-| [0003](0003-postgres-everywhere.md) | PostgreSQL in dev, test and prod | Accepted |
+| [0003](0003-postgres-everywhere.md) | PostgreSQL in dev, test and prod | Accepted, amended by 0015 |
 | [0004](0004-append-only-ledger.md) | Append-only stock ledger with cached balance | Accepted |
 | [0005](0005-quantity-first-price-optional.md) | Quantity is primary, price optional | Accepted |
 | [0006](0006-stock-in-via-excel.md) | Stock in via staged Excel import | Accepted |
@@ -21,5 +21,6 @@ Status: `Proposed` (my default, waiting on owner) · `Accepted` · `Superseded b
 | [0012](0012-time-and-numbers.md) | UTC storage, lab-timezone reports, Decimal only | Accepted |
 | [0013](0013-single-tenant-self-hosted.md) | Single tenant, self-hosted, docker compose | Accepted |
 | [0014](0014-license.md) | License | Open |
+| [0015](0015-native-postgres-for-local-dev.md) | Portable native PostgreSQL 16 for local dev | Accepted |
 
 Template: [0000-template.md](0000-template.md)
