@@ -11,7 +11,7 @@ from functools import wraps
 from django.contrib.auth import logout
 from django.contrib.auth.hashers import check_password
 from django.db import transaction
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from inventory.models import Employee
@@ -92,6 +92,10 @@ def employee_required(view):
     def wrapper(request, *args, **kwargs):
         request.employee, request.kiosk_mode = _resolve(request)
         if request.employee is None:
+            if request.user.is_authenticated and current_device(request) is None:
+                # Signed in (e.g. as an admin) but not an employee: kiosk:start would send
+                # them straight back here, an endless redirect loop.
+                return render(request, "kiosk/not_linked.html", status=403)
             return redirect("kiosk:start")
         return view(request, *args, **kwargs)
 

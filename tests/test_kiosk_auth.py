@@ -223,7 +223,7 @@ def test_without_remember_me_session_ends_with_browser(client, phone_user):
 
 def test_user_without_employee_cannot_use_kiosk(client, staff):
     client.force_login(staff)
-    assert client.get("/k/home/").url == "/k/"
+    assert client.get("/k/home/").status_code == 403  # was a redirect to /k/, half of a loop
 
 
 def test_anonymous_phone_is_sent_to_login(client):
@@ -280,3 +280,11 @@ def test_admin_unlocks(admin_client, with_pin):
     )
     with_pin.refresh_from_db()
     assert with_pin.pin_locked_until is None and with_pin.failed_pin_attempts == 0
+
+
+def test_signed_in_user_without_employee_gets_a_page_not_a_redirect_loop(admin_client):
+    # Found in the browser: an admin opening /k/ bounced between /k/ and /k/home/ forever.
+    assert admin_client.get("/k/").url == "/k/home/"
+    page = admin_client.get("/k/home/")
+    assert page.status_code == 403
+    assert b"Not linked to an employee" in page.content
