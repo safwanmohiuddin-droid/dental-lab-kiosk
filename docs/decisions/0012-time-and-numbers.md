@@ -1,6 +1,6 @@
 # 0012. UTC storage, lab-timezone reports, Decimal only
 
-- Status: Accepted (owner, 2026-11-16)
+- Status: Accepted (owner, 2026-11-16), time-zone part superseded by [0016](0016-time-zone-is-the-labs-zone.md)
 - Date: 2026-11-16
 
 ## Context

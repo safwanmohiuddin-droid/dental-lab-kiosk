@@ -61,7 +61,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"  # ADR 0012: store UTC, convert to the lab's zone in reports
+# ADR 0016: the lab's own zone for display and day/month boundaries; Postgres still stores UTC.
+TIME_ZONE = env("TIME_ZONE", default="UTC")
 USE_I18N = True
 USE_TZ = True
 

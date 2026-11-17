@@ -1,0 +1,55 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_field_sets %}
+{% if batch.errors %}
+<h2>{{ batch.errors|length }} problem{{ batch.errors|length|pluralize }}: nothing can be imported until the file is fixed</h2>
+<table>
+  <thead><tr><th>Row</th><th>Problem</th></tr></thead>
+  <tbody>
+  {% for e in batch.errors %}
+    <tr><td>{{ e.row|default:"file" }}</td><td>{{ e.message }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p>Fix the file, delete this import, and upload the corrected file.</p>
+{% endif %}
+
+{% if batch.rows %}
+<h2>{{ batch.rows|length }} row{{ batch.rows|length|pluralize }}{% if batch.status == "committed" %} imported{% else %} ready{% endif %}</h2>
+<table>
+  <thead>
+    <tr><th>Row</th><th>Barcode</th><th>Material</th><th>Qty</th><th>Unit</th><th>Unit cost</th><th>Reference</th></tr>
+  </thead>
+  <tbody>
+  {% for r in batch.rows %}
+    <tr>
+      <td>{{ r.row }}</td>
+      <td>{{ r.barcode }}</td>
+      <td>{{ r.name }}{% if r.new %} <strong>(new)</strong>{% endif %}</td>
+      <td>{{ r.qty }}</td>
+      <td>{{ r.unit }}</td>
+      <td>{{ r.unit_cost|default:"-" }}</td>
+      <td>{{ r.reference }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
+
+{% block submit_buttons_bottom %}
+{% if can_commit %}
+<div class="submit-row">
+  <button type="submit" form="commit-form" class="default">Commit {{ batch.rows|length }} row{{ batch.rows|length|pluralize }} to stock</button>
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+{# Outside the admin's own <form>: browsers drop a form nested inside another. #}
+{% if can_commit %}
+<form id="commit-form" method="post" action="{% url 'admin:inventory_importbatch_commit' batch.pk %}">{% csrf_token %}</form>
+{% endif %}
+{% endblock %}
