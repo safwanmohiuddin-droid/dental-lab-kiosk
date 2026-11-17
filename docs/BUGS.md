@@ -2,6 +2,125 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: A template comment printed on screen, then the page lost all styling
+- **Symptom:** raw comment text at the top of every kiosk page; after one click the page went unstyled.
+- **Root cause:** Django's `{# #}` comments are single-line. A two-line one rendered as text inside `<head>`; browsers close `<head>` at the first text, so the CSS and script tags fell into `<body>`, and the next boosted htmx swap replaced the body and removed them.
+- **Fix:** `{% comment %}` block.
+- **Test:** `test_no_template_comment_leaks_into_the_page` (fails on the old template).
+- **Lesson:** "One bug, two symptoms. The screenshot showed the first; inspecting `document.head` explained the second."
+
+### 2026-11-17: Cost reports opened with a kiosk password alone
+- **Symptom:** found in review while merging Phase 9: `/r/` only checked login and permission.
+- **Root cause:** Phase 7 (reports) and Phase 9 (admin 2FA) were built in parallel; neither owned the gap between them. A user signed in through the kiosk's personal login (password only) could read cost data.
+- **Fix:** reports use the admin site's own `has_permission` (staff, and TOTP-verified when 2FA is on). The first attempt passed `admin.site.has_permission` to `user_passes_test`, which hands it a user, not a request: 13 tests failed; replaced with a small wrapper.
+- **Test:** `test_kiosk_login_alone_does_not_open_reports`, `test_reports_need_2fa_when_the_admin_does` (both fail on the old gate).
+- **Lesson:** "Parallel teams produce gaps between their specs. Review the seams, not just each piece."
+
+### 2026-11-17: Endless redirect between /k/ and /k/home/
+- **Symptom:** an admin opening the kiosk bounced between two pages forever.
+- **Root cause:** `start` sent a signed-in user without a registered device to `home`; `employee_required` sent anyone who isn't an employee back to `start`. The Phase 4 test asserted the first redirect and never followed it.
+- **Fix:** the decorator shows a 403 "not linked to an employee" page in that case.
+- **Test:** regression test, plus the old test corrected to the right behaviour.
+- **Lesson:** "A redirect test must check where the chain ends, not just the first hop."
+
+### 2026-11-17: Parallel wrong PIN guesses beat the lockout (reproduced on purpose)
+- **Symptom:** 8 simultaneous wrong guesses were all checked against a limit of 5.
+- **Root cause:** read-then-increment: every request read the counter before the others wrote it. `F()` fixes lost increments but not the check-then-act gap.
+- **Fix:** `select_for_update()` on the employee row for the whole attempt.
+- **Test:** `test_parallel_wrong_guesses_cannot_exceed_the_limit`.
+- **Lesson:** "A lockout counter is a race condition, just like stock."
+
+### 2026-11-17: Registration links would have been used up by chat previews (avoided by design)
+- **Symptom:** none in practice; found while designing.
+- **Root cause:** WhatsApp and other apps fetch a link to build a preview. If GET registered the device, the preview bot would burn the one-time link.
+- **Fix:** GET shows a confirm button; only POST registers.
+- **Test:** `test_opening_the_link_does_not_use_it_up`.
+- **Lesson:** "Safe methods must be safe: anything can GET your URL."
+
+### 2026-11-17: `str.isdigit()` accepted Arabic-Indic digits as a PIN
+- **Symptom:** "١٢٣٤" passed the PIN check.
+- **Root cause:** `isdigit()` is true for every Unicode digit.
+- **Fix:** PINs must match `[0-9]{4,6}`.
+- **Test:** `test_pin_must_be_4_to_6_ascii_digits`.
+- **Lesson:** "Validation should name the exact characters it accepts."
+
+### 2026-11-17: "Only 1E+1 disc in stock"
+- **Symptom:** stock messages printed 10 as `1E+1`.
+- **Root cause:** `Decimal("10.000").normalize()` is `1E+1`; tests only used 3 and 0.001.
+- **Fix:** `services.plain()` formats with `:f`.
+- **Test:** regression test, seen failing on the old code.
+- **Lesson:** "Test round numbers; `normalize()` is not a formatter."
+
+### 2026-11-17: htmx hid error pages and ignored `<meta refresh>`
+- **Symptom:** the 403 "PIN locked" page would never appear; the done screen never returned to the start.
+- **Root cause:** htmx 2 does not swap 4xx/5xx responses by default, and browsers ignore `<meta refresh>` inside a swapped body.
+- **Fix:** `responseHandling` in an `htmx-config` meta tag; the return timer moved to `kiosk.js`.
+- **Test:** kiosk screen tests; checked in the browser.
+- **Lesson:** "Know what your framework does with error responses."
+
+### 2026-11-17: `Sum(F("qty") * F("unit_cost"))` raised "is an aggregate"
+- **Symptom:** every report query failed.
+- **Root cause:** annotations named `qty` and `cost` shadowed the model fields, so `F("qty")` resolved to the aggregate.
+- **Fix:** annotations renamed `net_qty` and `net_cost`.
+- **Test:** all of `tests/test_reports.py`.
+- **Lesson:** "Never name an annotation after a model field; F() looks up annotations first."
+
+### 2026-11-17: The dashboard scanned the same 200k rows five times
+- **Symptom:** 178 ms for this month, 494 ms for 12 months.
+- **Root cause:** five aggregate queries, each a full scan, and no index starting with `created_at`.
+- **Fix:** three queries instead of five; `Index(created_at)` added (measured 150 to 54 ms for this month).
+- **Test:** `test_dashboard_query_count_does_not_grow_with_rows`; timings and `EXPLAIN ANALYZE` in PR #15.
+- **Lesson:** "Measure first. The cheapest fix was asking the database fewer questions."
+
+### 2026-11-17: django-otp 1.7 refused a correct 2FA code
+- **Symptom:** admin login with a valid TOTP code stayed on the login page: "Please select a device".
+- **Root cause:** django-otp 1.7 requires an explicit device choice.
+- **Fix:** the login form picks the device when the user has exactly one.
+- **Test:** end-to-end admin login test with a real TOTP code.
+- **Lesson:** "Read the changelog of security libraries."
+
+### 2026-11-17: CI never ran on a pull request
+- **Symptom:** a PR showed no checks at all.
+- **Root cause:** another phase merged first and the PR became conflicting; GitHub does not run `pull_request` workflows when it can't build a merge commit.
+- **Fix:** rebase onto `main`, regenerate `uv.lock` with `uv lock` instead of trusting a text merge.
+- **Test:** the CI run itself.
+- **Lesson:** "No checks is not the same as green checks."
+
+### 2026-11-17: Production defaults would have broken every test in CI
+- **Symptom:** caught before pushing: with `DEBUG` off, the test client got HTTPS redirects and 2FA login redirects.
+- **Root cause:** CI runs with `DEBUG` off, which turns on `SECURE_SSL_REDIRECT` and admin 2FA.
+- **Fix:** an autouse test fixture turns both off; `tests/test_deploy.py` turns them back on and checks them.
+- **Test:** `tests/test_deploy.py`; suite run locally with `DEBUG=False`.
+- **Lesson:** "Run your tests the way CI runs them."
+
+### 2026-11-17: Our own formatters would have corrupted vendored files
+- **Symptom:** pre-commit rewrote the minified polyfill and htmx, and rejected the 946 KB wasm.
+- **Root cause:** whitespace and end-of-file hooks treat vendored files like ours.
+- **Fix:** pre-commit `exclude: '/vendor/'` and `**/vendor/** -text` in `.gitattributes`; a test checks the wasm hash.
+- **Test:** `tests/test_scanner.py`.
+- **Lesson:** "Vendored code must stay byte-identical so it can be verified."
+
+### 2026-11-17: Camera left running after Cancel
+- **Symptom:** found in code review before any phone test.
+- **Root cause:** the stream was dropped without stopping its tracks when Cancel was pressed while `getUserMedia` was pending, or when the reader failed to load.
+- **Fix:** keep the stream as soon as it exists and stop its tracks on every exit path.
+- **Test:** headless browser test with a fake camera.
+- **Lesson:** "Every resource acquired before an `await` needs a release on every path after it."
+
+### 2026-11-17: Shared git refs between worktrees nearly deleted the reports app
+- **Symptom:** a squashed commit for Phase 5 removed `reports/`; caught in `git status` before pushing.
+- **Root cause:** worktrees share remote-tracking refs. Another worktree fetched mid-squash, so `reset --soft origin/main` landed on a newer `main`.
+- **Fix:** redone on an explicit base commit, then rebased.
+- **Test:** none possible (workflow).
+- **Lesson:** "When others fetch, reset to an explicit SHA, never to a moving ref."
+
+### 2026-11-17: One unexplained test failure under heavy load
+- **Symptom:** one full run out of 9 failed one test; never reproduced, including 12 runs of the race tests.
+- **Root cause:** unknown. Four agents were loading the same machine (runs took 2.5 to 14 s). Most likely a timing-sensitive concurrency test.
+- **Fix:** none yet; every CI run since has been green.
+- **Test:** the race and property tests.
+- **Lesson:** "Write down what you don't understand, too."
+
 ### 2026-11-17: Admin showed 6:54 a.m. for something done at 10:54
 - **Symptom:** first browser test of the import screen showed UTC times to a user in UTC+4.
 - **Root cause:** my mental model was wrong. I kept `TIME_ZONE = "UTC"` thinking it controlled

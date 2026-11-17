@@ -24,6 +24,24 @@ for the 6-digit code after the password.
 
 Lost phone: `docker compose -f compose.prod.yaml exec web python manage.py totp_setup <username> --replace`.
 
+## First day setup
+All in the admin at `https://<DOMAIN>/admin/`.
+
+1. **Departments**: add one per department (for example CAD/CAM, Ceramics, Model Room).
+2. **Employees**: add each technician with their department, then set a 4 to 6 digit PIN on
+   their page. Staff who will use their own phone also need a user account, linked on the
+   employee page (field "User").
+3. **Stock**: Inventory, Stock imports, Add. Download the template, fill it in, upload, check
+   the preview, press Commit. See [stock-import.md](stock-import.md).
+4. **Store-room tablet**: Kiosk, Devices, Add. The admin shows a one-time link (valid 24 hours).
+   Open it on the tablet and press "Register this device". From then on the tablet shows
+   "Who are you?" at `https://<DOMAIN>/k/`.
+5. **Labels**: print a barcode label (Code 128 or EAN-13) for every material without one; the
+   number must match the barcode column of the import.
+
+Staff phones: open `https://<DOMAIN>/k/` and sign in with the linked user account.
+Reports: `https://<DOMAIN>/r/` (staff with two-factor login).
+
 ## Check it is healthy
 - `https://<DOMAIN>/healthz` returns `{"status": "ok", "database": "ok"}` (503 if the database is
   down). Point an uptime monitor at it.
@@ -39,6 +57,8 @@ docker compose -f compose.prod.yaml logs -f caddy   # HTTP access log, JSON
 ```
 
 ## Upgrade
+Each release is also published as a ready-made image, `ghcr.io/safwanmohiuddin-droid/dental-lab-kiosk:<version>`; the compose file builds from source by default.
+
 ```bash
 cd /opt/kiosk
 ./scripts/backup.sh                                  # always back up first

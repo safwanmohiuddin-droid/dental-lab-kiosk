@@ -1,0 +1,14 @@
+name: Idea or feature request
+description: Something that would make the kiosk more useful in your lab
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve in your lab?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to happen?

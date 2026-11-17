@@ -8,7 +8,8 @@ An open-source, self-hosted kiosk that shows dental labs which department consum
 material, what it costs, and who took it.
 
 [![CI](https://github.com/safwanmohiuddin-droid/dental-lab-kiosk/actions/workflows/ci.yml/badge.svg)](https://github.com/safwanmohiuddin-droid/dental-lab-kiosk/actions/workflows/ci.yml)
-![Status](https://img.shields.io/badge/status-early%20development-orange)
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![License](https://img.shields.io/badge/license-AGPL--3.0-green)
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![Django](https://img.shields.io/badge/django-5.2%20LTS-0C4B33)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-16-336791)
@@ -33,7 +34,8 @@ material, types a quantity and confirms. About ten seconds. The owner gets a liv
 - **Who took what**, and when, with an optional case number
 - **Stock on hand**, kept up to date by every issue, return and delivery
 
-Prices are optional. Every report works on quantity, and money appears wherever a cost is known.
+Prices are optional. Every report works on quantity, and money appears wherever a cost is known,
+with a "cost coverage" figure so a partial total is never mistaken for a full one.
 
 It works next to **any** accounting or lab software. Nothing to integrate on day one.
 
@@ -48,75 +50,78 @@ It works next to **any** accounting or lab software. Nothing to integrate on day
                          Append-only stock ledger  -->  Reports by department, material, person
 ```
 
-## Planned features (v1)
+## Features
 
 | | Feature |
 |---|---|
-| 📦 | Stock in from an Excel file, validated and previewed before anything is saved |
-| 📱 | Mobile-first kiosk that works on any phone, tablet or desktop browser |
-| 📷 | Phone camera barcode scanning, with USB and Bluetooth scanners also supported |
-| 🔁 | Repeat last issue in one tap |
-| ↩️ | Returns to stock, credited back to the right department |
+| 📦 | Stock in from an Excel template, checked row by row and previewed before anything is saved |
+| 📱 | Mobile-first kiosk for any phone, tablet or desktop browser |
+| 📷 | Phone camera barcode scanning (native or WASM fallback); USB and Bluetooth scanners work too |
+| 🔁 | Repeat a recent issue in one tap |
+| ↩️ | Returns to stock, credited back to the department at the cost it was charged |
 | 🦷 | Optional case number on each issue |
-| 📶 | Offline mode for store rooms without signal, synced safely when back online |
-| 🔐 | Shared tablet with employee PIN, or personal login on your own phone |
+| 🔐 | Shared tablet with employee PIN and lockout, or personal login on your own phone |
 | 📊 | Reports by department, material and person, exportable to Excel |
+| 🛡️ | Admin and reports behind two-factor login; HTTPS, health check, JSON logs, tested backups |
+
+The kiosk needs a network connection. If a phone loses WiFi, it says so plainly, and pressing
+again never records an issue twice.
+
+## Install
+
+One lab per install, on a small server or a mini PC in the lab. Needs Docker.
+
+```bash
+git clone https://github.com/safwanmohiuddin-droid/dental-lab-kiosk.git
+cd dental-lab-kiosk
+cp .env.prod.example .env      # set DOMAIN, SECRET_KEY, database password, TIME_ZONE
+docker compose -f compose.prod.yaml up -d --build
+```
+
+Then create the first admin and its authenticator, register the store-room tablet, and import
+your stock. Step by step, including upgrades, backups and a restore drill:
+**[docs/operations.md](docs/operations.md)**.
+
+More guides: [importing stock from Excel](docs/stock-import.md) · [hardware](docs/hardware.md) ·
+[testing the camera on a phone](docs/phone-testing.md).
 
 ## Built on purpose to be boring and reliable
 
 | Layer | Choice |
 |---|---|
 | Backend | Django 5.2 LTS, Python 3.13 |
-| UI | Server-rendered templates with HTMX, no SPA |
+| UI | Server-rendered templates, boosted htmx, plain CSS, no build step |
 | Database | PostgreSQL 16 |
-| Deployment | Docker Compose with Caddy for automatic HTTPS |
+| Deployment | Docker Compose, Caddy (automatic HTTPS), gunicorn, WhiteNoise |
 
-Some of the engineering ideas inside:
+Some of the engineering inside:
 
 - **Append-only stock ledger** with a cached balance and an invariant check, so stock never drifts
-- **Row-level locking** so two people cannot take the last unit at the same moment
+- **Row-level locking** so two people can't take the last unit, or out-guess a PIN lockout, at the
+  same moment (both races reproduced in tests first)
 - **Idempotency keys** so a double tap or a network retry never records an issue twice
-- **All-or-nothing imports** so one bad row never leaves half a delivery in the system
+- **Property-based tests** (Hypothesis) throwing random operation sequences at the ledger
+- **All-or-nothing imports** that catch Excel's traps, like barcodes that lost their leading zero
 - **Decimal everywhere, UTC storage**, and reports in the lab's own time zone
 
-Every significant choice is written down as an
-[Architecture Decision Record](docs/decisions/README.md), and real bugs are logged with their root
-cause in [docs/BUGS.md](docs/BUGS.md).
+Every significant choice is an [Architecture Decision Record](docs/decisions/README.md), and real
+bugs are logged with their root cause in [docs/BUGS.md](docs/BUGS.md).
 
-## Roadmap
+## Development
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | Project foundations, CI, decision records | ✅ Done |
-| 1 | Data model and admin | ✅ Done |
-| 2 | Stock ledger with locking and property-based tests | ✅ Done |
-| 3 | Excel import | ✅ Done |
-| 4 | Employee PIN and personal login | ⏳ Next |
-| 5 | Mobile kiosk | |
-| 6 | Camera scanning | |
-| 7 | Reports and Excel export | |
-| 8 | Offline mode | |
-| 9 | Production hardening, backups, one-command deploy | |
-| 10 | v0.1.0 release | |
-
-The full plan lives in [PLAN.md](PLAN.md).
-
-## Getting started (development)
-
-Requirements: [uv](https://docs.astral.sh/uv/) and PostgreSQL 16, either with Docker (`docker compose up -d`) or a native install. Set `DATABASE_URL` in `.env` to match.
+Needs [uv](https://docs.astral.sh/uv/) and PostgreSQL 16 (`docker compose up -d` starts one, or
+use a native install and set `DATABASE_URL` in `.env`).
 
 ```bash
-git clone https://github.com/safwanmohiuddin-droid/dental-lab-kiosk.git
-cd dental-lab-kiosk
-cp .env.example .env        # set SECRET_KEY
-docker compose up -d        # PostgreSQL 16
+cp .env.example .env        # set SECRET_KEY and DATABASE_URL
 uv sync
 uv run pre-commit install
 uv run python manage.py migrate
+uv run python manage.py seed_demo
 uv run python manage.py runserver
 ```
 
-Run the same checks as CI:
+Same checks as CI:
 
 ```bash
 uv run ruff check . && uv run ruff format --check . && uv run pytest
@@ -124,11 +129,11 @@ uv run ruff check . && uv run ruff format --check . && uv run pytest
 
 ## Contributing
 
-The project is early, so the best contribution right now is feedback from people who run or work
-in a dental lab: how materials are issued today, what you would want to see, and what would make
-this worth installing. Please open an issue.
+Feedback from people who run or work in a dental lab is the most valuable contribution: how
+materials are issued today and what would make this worth installing. See
+[CONTRIBUTING.md](CONTRIBUTING.md). Security issues: [SECURITY.md](SECURITY.md).
 
 ## License
 
-Not chosen yet. It will be an OSI-approved open-source license before the first release
-(see [ADR 0014](docs/decisions/0014-license.md)).
+[AGPL-3.0](LICENSE). Free to use and change. If you run a modified version for other people,
+you must share your changes.
