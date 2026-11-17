@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Backups are now encrypted** with a public key (age) and can be copied off-site (rclone).
+  Upgrading: set `BACKUP_AGE_RECIPIENT` in `.env` and install `age`, or backups stop with a clear
+  message. See docs/operations.md, Backups.
+- `SECRET_KEY_FALLBACKS` for rotating the secret key without unregistering tablets.
+- Nightly warning when `.env` is readable by other users.
+- The site root `/` opens the kiosk instead of a 404.
+- `seed_demo` creates demo logins (development only).
+
 ## 0.1.0 (2026-11-17)
 
 First release.

@@ -24,6 +24,7 @@ services:
         condition: service_healthy
     environment:
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      SECRET_KEY_FALLBACKS: ${SECRET_KEY_FALLBACKS:-}
       DEBUG: "False"
       ALLOWED_HOSTS: ${DOMAIN:?set DOMAIN in .env}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}

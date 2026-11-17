@@ -2,6 +2,34 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: Backups were readable and lived on the same disk
+- **Symptom:** found in a security review after v0.1.0, prompted by a post warning that generated apps skip secrets and backup hygiene.
+- **Root cause:** `backup.sh` wrote plain `pg_dump` files next to the database. A dead disk loses both; a stolen server exposes every backup.
+- **Fix:** encrypt to an age public key (the server can't read its own backups), refuse to run without one, optional rclone off-site copy with a warning when missing (ADR 0034).
+- **Test:** CI restore drill: refused without a key, no readable data in the file, decrypt with the private key, restore.
+- **Lesson:** "Security reviews belong after a release too; the gaps were exactly the things nobody had asked for."
+
+### 2026-11-17: `! grep` would never have failed the CI step
+- **Symptom:** caught while writing the CI check that the backup contains no readable data.
+- **Root cause:** bash ignores `set -e` for a command starting with `!`, so `! grep -q secret file` passes even when the secret is there. Proved with `bash -ec '! true; echo reached'`.
+- **Fix:** negative checks written as `if grep -q ...; then exit 1; fi`.
+- **Test:** the CI step itself.
+- **Lesson:** "A test that can't fail is worse than no test, because it looks like coverage."
+
+### 2026-11-17: A failed backup left a half-written file every night
+- **Symptom:** a local test with stand-in `docker` and `age` commands: the failing dump stopped the script (good) but left `kiosk-...dump.age.part` behind.
+- **Root cause:** `set -e` exits before the cleanup line.
+- **Fix:** `trap 'rm -f "$file.part"' EXIT`.
+- **Test:** stub run of a failing and a good dump; CI drill.
+- **Lesson:** "Cleanup that must always happen goes in a trap, not after the work."
+
+### 2026-11-17: Rotating the secret key would have unregistered every tablet
+- **Symptom:** found while documenting key rotation.
+- **Root cause:** tablet cookies are signed with `SECRET_KEY`; a new key invalidates them all.
+- **Fix:** `SECRET_KEY_FALLBACKS` from the environment for a grace period.
+- **Test:** `test_rotating_the_secret_key_keeps_tablets_registered` (works with the fallback, stops after).
+- **Lesson:** "Know everything your secret key signs before you change it."
+
 ### 2026-11-17: A template comment printed on screen, then the page lost all styling
 - **Symptom:** raw comment text at the top of every kiosk page; after one click the page went unstyled.
 - **Root cause:** Django's `{# #}` comments are single-line. A two-line one rendered as text inside `<head>`; browsers close `<head>` at the first text, so the CSS and script tags fell into `<body>`, and the next boosted htmx swap replaced the body and removed them.

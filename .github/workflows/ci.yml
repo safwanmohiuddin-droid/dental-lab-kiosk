@@ -63,12 +63,27 @@ jobs:
           curl -fsk https://localhost/admin/login/ | grep -q 'name="otp_token"'
           curl -sk -o /dev/null https://localhost/no-such-page
           docker compose -f compose.prod.yaml logs --no-log-prefix web | grep -q '"logger": "django.request"'
-      - name: Backup, then restore into a fresh database (restore drill)
+      - name: Backup is refused without an encryption key
         run: |
-          ./scripts/backup.sh
-          dump=$(ls backups/kiosk-*.dump)
+          if ./scripts/backup.sh 2> refused.log; then echo "backup ran without a key"; exit 1; fi
+          grep -q "backup refused" refused.log
+          grep -q "chmod 600 .env" refused.log  # .env was written with default permissions
+      - name: Encrypted backup, then decrypt and restore into a fresh database (restore drill)
+        run: |
+          sudo apt-get install -y -qq age
+          age-keygen -o "$RUNNER_TEMP/owner-key.txt" 2> pubkey.txt  # the owner's offline key
+          echo "BACKUP_AGE_RECIPIENT=$(sed -n 's/^Public key: //p' pubkey.txt)" >> .env
+          chmod 600 .env
+          ./scripts/backup.sh 2> backup.err
+          # `! cmd` is exempt from bash -e, so negative checks need an explicit exit.
+          if grep -q "chmod 600" backup.err; then echo ".env still flagged"; exit 1; fi
+          file=$(ls backups/kiosk-*.dump.age)
+          head -c 21 "$file" | grep -q "age-encryption.org/v1"
+          if grep -q "inventory_stockmove" "$file"; then echo "backup is readable"; exit 1; fi
+          age --decrypt -i "$RUNNER_TEMP/owner-key.txt" "$file" > restored.dump
+          head -c 5 restored.dump | grep -q PGDMP
           docker compose -f compose.prod.yaml exec -T db sh -c \
-            'createdb -U "$POSTGRES_USER" restore_drill && pg_restore -U "$POSTGRES_USER" -d restore_drill --no-owner' < "$dump"
+            'createdb -U "$POSTGRES_USER" restore_drill && pg_restore -U "$POSTGRES_USER" -d restore_drill --no-owner' < restored.dump
           count=$(docker compose -f compose.prod.yaml exec -T db sh -c \
             'psql -U "$POSTGRES_USER" -d restore_drill -tAc "select count(*) from django_migrations"')
           echo "restored migrations: $count"

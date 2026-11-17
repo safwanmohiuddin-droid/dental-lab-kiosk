@@ -8,6 +8,8 @@ env = environ.Env(DEBUG=(bool, False), ALLOWED_HOSTS=(list, []))
 environ.Env.read_env(BASE_DIR / ".env")
 
 SECRET_KEY = env("SECRET_KEY")
+# Rotation (ADR 0034): put the old key here for a while so tablets and sessions stay signed in.
+SECRET_KEY_FALLBACKS = [k for k in env.str("SECRET_KEY_FALLBACKS", default="").split(",") if k]
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
