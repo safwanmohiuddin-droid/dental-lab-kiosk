@@ -13,7 +13,9 @@ Compose: `web` (Django + gunicorn), `db` (PostgreSQL 16) and `caddy` (HTTPS).
 git clone https://github.com/safwanmohiuddin-droid/dental-lab-kiosk.git /opt/kiosk
 cd /opt/kiosk
 cp .env.prod.example .env
-nano .env                      # set DOMAIN, SECRET_KEY, POSTGRES_PASSWORD, TIME_ZONE
+chmod 600 .env                 # holds the secret key and DB password: owner-only
+nano .env                      # set DOMAIN, SECRET_KEY, POSTGRES_PASSWORD, TIME_ZONE, BACKUP_*
+apt install -y age rclone      # backup encryption and the off-site copy
 docker compose -f compose.prod.yaml up -d --build
 docker compose -f compose.prod.yaml exec web python manage.py createsuperuser
 docker compose -f compose.prod.yaml exec web python manage.py totp_setup <username>
@@ -67,37 +69,70 @@ docker compose -f compose.prod.yaml up -d --build    # migrations run on start
 ```
 
 ## Backups
-`scripts/backup.sh` writes `backups/kiosk-<UTC time>.dump` (PostgreSQL custom format) and keeps
-the newest 14 (`BACKUP_KEEP` to change). Run it nightly from cron:
+Backups are encrypted with a public key (ADR 0034). The server can write them but never read
+them, so a stolen server or a leaked bucket gives nothing away.
+
+**Once, on your own computer (not the server):**
+```bash
+age-keygen -o kiosk-backup-key.txt     # prints "Public key: age1..."
+```
+Put the `age1...` public key in the server's `.env` as `BACKUP_AGE_RECIPIENT`. Keep
+`kiosk-backup-key.txt` **off the server**: in a password manager and on a USB stick in a drawer.
+Without it no backup can ever be restored; with it, anyone can read them.
+
+**Off-site copy** (strongly recommended): configure an rclone remote on the server
+(`rclone config`, for example Backblaze B2, S3 or Google Drive) and set
+`BACKUP_RCLONE_REMOTE=<remote>:<bucket>/kiosk`. Every backup is copied there; set the bucket's own
+lifecycle rule to delete files older than, say, 90 days. Without a remote the script warns on every
+run: a dead disk takes the database and its backups together.
+
+**Nightly**, from cron:
 ```
 15 2 * * * cd /opt/kiosk && ./scripts/backup.sh >> backups/backup.log 2>&1
 ```
-A backup on the same disk is not a backup. Copy `backups/` somewhere else (another server,
-cloud storage, an external drive) at least weekly.
+`backups/kiosk-<UTC time>.dump.age` is written and the newest 14 are kept (`BACKUP_KEEP`). The
+script refuses to run without `BACKUP_AGE_RECIPIENT`, leaves nothing behind when a dump fails, and
+warns if `.env` is readable by other users. Read `backups/backup.log` now and then.
 
 ## Restore drill
 Do this once after installing and then every few months, so you know it works before you need
-it. CI runs the same steps against every change.
+it. CI runs the same steps against every change. You need the private key file.
 
-1. Restore into a scratch database and check it has data:
+1. Decrypt the backup on a machine that has the key, then copy `restored.dump` to the server:
+   ```bash
+   age --decrypt -i kiosk-backup-key.txt kiosk-<time>.dump.age > restored.dump
+   ```
+2. Restore into a scratch database and check it has data:
    ```bash
    docker compose -f compose.prod.yaml exec -T db sh -c \
      'createdb -U "$POSTGRES_USER" restore_drill && pg_restore -U "$POSTGRES_USER" -d restore_drill --no-owner' \
-     < backups/<file>.dump
+     < restored.dump
    docker compose -f compose.prod.yaml exec db sh -c \
      'psql -U "$POSTGRES_USER" -d restore_drill -c "select count(*) from inventory_stockmove"'
    docker compose -f compose.prod.yaml exec db sh -c 'dropdb -U "$POSTGRES_USER" restore_drill'
    ```
-2. Real restore (replaces the live data):
+3. Real restore (replaces the live data):
    ```bash
    docker compose -f compose.prod.yaml stop web
    docker compose -f compose.prod.yaml exec -T db sh -c \
      'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' \
-     < backups/<file>.dump
+     < restored.dump
    docker compose -f compose.prod.yaml start web
    docker compose -f compose.prod.yaml exec web python manage.py check_ledger
    ```
+4. Delete `restored.dump` afterwards: it is not encrypted.
+
+## Rotating the secret key
+Do it if `.env` may have leaked, or yearly.
+1. Generate a new key (`python3 -c "import secrets; print(secrets.token_urlsafe(50))"`).
+2. In `.env`: move the current `SECRET_KEY` value into `SECRET_KEY_FALLBACKS`, put the new one in
+   `SECRET_KEY`, then `docker compose -f compose.prod.yaml up -d`. Tablets and signed-in users
+   stay signed in.
+3. After a week, empty `SECRET_KEY_FALLBACKS` and restart again. Anything still signed with the
+   old key (for example a tablet not used all week) must sign in or be registered again.
+
+If the database password leaked, change it in Postgres and in `.env` together.
 
 ## Moving to a new server
-Install on the new server (steps above, same `.env`), copy the latest dump across, do the real
+Install on the new server (steps above, same `.env`), decrypt the latest backup, do the real
 restore, then point DNS at the new server.

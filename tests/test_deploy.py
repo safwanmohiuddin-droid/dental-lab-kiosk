@@ -149,3 +149,22 @@ def test_totp_setup_command(staff):
         call_command("totp_setup", "boss", stdout=StringIO())
     call_command("totp_setup", "boss", "--replace", stdout=StringIO())
     assert TOTPDevice.objects.filter(user=staff).count() == 1
+
+
+def test_rotating_the_secret_key_keeps_tablets_registered(client, settings, django_user_model):
+    # Tablet cookies are signed with SECRET_KEY; rotating it must not unregister every tablet.
+    from kiosk.models import Device
+
+    owner = django_user_model.objects.create_user("o", password="x", is_staff=True)
+    device = Device(name="Store room")
+    token = device.new_link_token(owner)
+    device.save()
+    client.post(f"/k/register/{token}/")
+    old_key = settings.SECRET_KEY
+
+    settings.SECRET_KEY = "a-brand-new-secret-key-" + "x" * 40
+    settings.SECRET_KEY_FALLBACKS = [old_key]
+    assert b"Who are you?" in client.get("/k/").content
+
+    settings.SECRET_KEY_FALLBACKS = []  # after the grace period the old cookie stops working
+    assert b"Who are you?" not in client.get("/k/").content
