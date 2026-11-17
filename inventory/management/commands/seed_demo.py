@@ -1,7 +1,21 @@
-from django.core.management.base import BaseCommand
+from decimal import Decimal
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from inventory import services
 from inventory.models import Department, Employee, Material
+from kiosk.models import Device
+
+# Public demo credentials, documented in the README. Never valid outside DEBUG (see handle()).
+DEMO_PASSWORD = "kiosk-demo"
+DEMO_PIN = "1234"
+OWNER = "owner"
+TECHNICIAN = ("aisha", "Aisha Rahman")  # signs in on her own phone
+DEMO_STOCK = 20
 
 DEPARTMENTS = ["CAD/CAM", "Ceramics", "Model Room", "Orthodontics"]
 
@@ -54,18 +68,56 @@ MATERIALS = [
 
 
 class Command(BaseCommand):
-    help = "Create demo departments, employees and materials. Safe to run more than once."
+    help = "Create demo data and demo logins (DEBUG only). Safe to run more than once."
 
     @transaction.atomic
     def handle(self, *args, **options):
+        if not settings.DEBUG:
+            raise CommandError(
+                "seed_demo creates logins with public passwords; it only runs with DEBUG=True."
+            )
+
         departments = {name: Department.objects.get_or_create(name=name)[0] for name in DEPARTMENTS}
         for name, dept in EMPLOYEES:
             Employee.objects.get_or_create(name=name, defaults={"department": departments[dept]})
-        for name, barcode, unit, category in MATERIALS:
-            Material.objects.get_or_create(
+        Employee.objects.filter(pin_hash="").update(pin_hash=make_password(DEMO_PIN))
+
+        for i, (name, barcode, unit, category) in enumerate(MATERIALS):
+            material, _ = Material.objects.get_or_create(
                 barcode=barcode, defaults={"name": name, "unit": unit, "category": category}
             )
+            if not material.moves.exists():
+                cost = None if i % 5 == 4 else Decimal(5 + 3 * i)  # some unpriced, like real labs
+                services.receive(material, DEMO_STOCK, cost, note="Demo opening stock")
+
+        User = get_user_model()
+        owner, _ = User.objects.get_or_create(username=OWNER)
+        owner.is_staff = owner.is_superuser = True
+        owner.set_password(DEMO_PASSWORD)
+        owner.save()
+
+        username, employee_name = TECHNICIAN
+        tech, _ = User.objects.get_or_create(username=username)
+        tech.set_password(DEMO_PASSWORD)
+        tech.save()
+        employee = Employee.objects.get(name=employee_name)
+        if employee.user_id in (None, tech.pk):
+            employee.user = tech
+            employee.save(update_fields=["user"])
+        else:
+            self.stderr.write(f"{employee_name} is linked to another login; left as it is.")
+
+        device, _ = Device.objects.get_or_create(
+            name="Demo tablet", defaults={"registered_by": owner}
+        )
+        token = device.new_link_token(owner)  # fresh one-time link every run
+        device.save()
+
         self.stdout.write(
             f"Demo data: {Department.objects.count()} departments, "
-            f"{Employee.objects.count()} employees, {Material.objects.count()} materials."
+            f"{Employee.objects.count()} employees, {Material.objects.count()} materials.\n"
+            f"Owner (admin, reports):  {OWNER} / {DEMO_PASSWORD}\n"
+            f"Technician on a phone:   {username} / {DEMO_PASSWORD}\n"
+            f"Shared tablet PIN:       {DEMO_PIN} for every demo employee\n"
+            f"Register this browser as the tablet (one time, 24 h): /k/register/{token}/"
         )

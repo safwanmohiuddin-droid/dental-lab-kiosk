@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 from django.apps import apps
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.db import IntegrityError, connection, models, transaction
 
 from inventory.models import Department, Employee, Material, StockMove
@@ -98,7 +98,8 @@ def test_department_with_moves_cannot_be_deleted(issue):
         issue.department.delete()
 
 
-def test_seed_demo_is_repeatable(db):
+def test_seed_demo_is_repeatable(db, settings):
+    settings.DEBUG = True
     call_command("seed_demo")
     call_command("seed_demo")
     assert (Department.objects.count(), Employee.objects.count(), Material.objects.count()) == (
@@ -106,6 +107,29 @@ def test_seed_demo_is_repeatable(db):
         10,
         30,
     )
+    # Opening stock is added once, not on every run, and the ledger stays consistent.
+    assert StockMove.objects.count() == 30
+    assert set(Material.objects.values_list("qty_on_hand", flat=True)) == {20}
+    call_command("check_ledger")
+
+
+def test_seed_demo_refuses_without_debug(db, settings):
+    # Demo passwords are public; they must never be created on a real server.
+    settings.DEBUG = False
+    with pytest.raises(CommandError):
+        call_command("seed_demo")
+    assert not Department.objects.exists()
+
+
+def test_seed_demo_logins_work(client, db, settings):
+    settings.DEBUG = True
+    call_command("seed_demo")
+    assert client.login(username="owner", password="kiosk-demo")
+    assert client.get("/r/").status_code == 200
+    client.logout()
+    assert client.login(username="aisha", password="kiosk-demo")
+    assert client.get("/k/home/").status_code == 200
+    assert Employee.objects.exclude(pin_hash="").count() == 10
 
 
 def test_stock_moves_are_read_only_in_admin(admin_client, issue):
