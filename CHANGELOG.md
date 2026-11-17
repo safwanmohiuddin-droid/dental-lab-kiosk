@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-17)
 
 - **Backups are now encrypted** with a public key (age) and can be copied off-site (rclone).
   Upgrading: set `BACKUP_AGE_RECIPIENT` in `.env` and install `age`, or backups stop with a clear
