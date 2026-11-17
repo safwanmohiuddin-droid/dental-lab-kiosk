@@ -121,6 +121,18 @@ uv run python manage.py seed_demo
 uv run python manage.py runserver
 ```
 
+`seed_demo` (development only, it refuses to run without `DEBUG=True`) creates demo data and
+demo logins:
+
+| Who | Where | Login |
+|---|---|---|
+| Owner | `/admin/` and `/r/` (reports) | `owner` / `kiosk-demo` |
+| Technician on her own phone | `/k/` | `aisha` / `kiosk-demo` |
+| Any demo employee on the shared tablet | `/k/` after registering the browser | PIN `1234` |
+
+It also adds 20 of each material and prints a one-time link that registers your browser as the
+store-room tablet. Try barcode `200000000011`.
+
 Same checks as CI:
 
 ```bash

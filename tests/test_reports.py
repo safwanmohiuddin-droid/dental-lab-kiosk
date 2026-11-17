@@ -159,7 +159,8 @@ def test_excel_export(admin_client, material, employee, url, sheets):
     assert wb.active.max_row == 2  # header + one row
 
 
-def test_seed_moves_keeps_the_ledger_consistent(db):
+def test_seed_moves_keeps_the_ledger_consistent(db, settings):
+    settings.DEBUG = True  # demo data only (seed_demo refuses otherwise)
     call_command("seed_moves", count=500)
     call_command("check_ledger")
     assert StockMove.objects.filter(kind="issue").count() == 500
