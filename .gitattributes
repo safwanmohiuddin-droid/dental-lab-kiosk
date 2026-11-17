@@ -2,4 +2,4 @@
 *.xlsx binary
 *.png binary
 *.wasm binary
-inventory/static/scanner/vendor/** -text
+**/vendor/** -text

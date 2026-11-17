@@ -1,0 +1,18 @@
+{% extends "kiosk/base.html" %}
+{% block title %}Done{% endblock %}
+{% block content %}
+{% if done.shared %}<meta http-equiv="refresh" content="5;url={% url 'kiosk:start' %}">{% endif %}
+<div class="ok" role="status">
+  <p>{% if done.kind == "return" %}Returned{% else %}Taken{% endif %}</p>
+  <p class="big">{{ done.qty }} {{ done.unit }}</p>
+  <p>{{ done.material }}</p>
+  <p class="muted">{{ done.department }}</p>
+</div>
+{% if done.shared %}
+  <p class="muted">Signed out. Next person in 5 seconds.</p>
+  <a class="button" href="{% url 'kiosk:start' %}" data-go-after="5">Next person</a>
+{% else %}
+  <a class="button" href="{% url 'kiosk:home' %}">Take something else</a>
+  <a class="button secondary" href="{% url 'kiosk:returns' %}">Return something</a>
+{% endif %}
+{% endblock %}
