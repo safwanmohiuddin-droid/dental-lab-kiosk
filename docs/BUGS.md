@@ -2,6 +2,19 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: Stacked PR closed instead of merged
+- **Symptom:** after squash-merging PR #2 with "delete branch", PR #3 (Phase 2, based on #2's
+  branch) showed CLOSED, and `main` had Phase 1 but not Phase 2.
+- **Root cause:** #3's base branch was deleted by the merge before GitHub retargeted the PR, and a
+  PR whose base no longer exists is closed. Squash merging also means #2's original commit is not
+  in `main`, so #3's branch still carried it.
+- **Fix:** `git rebase --onto origin/main <phase-1 commit> phase-2-ledger` replays only the Phase 2
+  commit on top of the squashed `main`; tests re-run (49 pass); reopened as a new PR.
+- **Test:** none possible; it's a workflow bug. Rule written instead: with stacked PRs, merge the
+  first one *without* deleting its branch, let GitHub retarget the next PR, then delete.
+- **Lesson:** "Squash merging and stacked branches don't mix by default; `rebase --onto` is how you
+  cut a branch loose from a parent that was rewritten."
+
 ### 2026-11-17: Two people took the last unit (lost update), reproduced on purpose
 - **Symptom:** with the row lock removed, the race test got `['ok', 'ok']`: both technicians
   were given the last disc, and stock no longer matched the ledger.
