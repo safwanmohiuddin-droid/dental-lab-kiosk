@@ -17,7 +17,7 @@ confirms. Ten seconds. The owner sees cost and quantity per department, per item
 - **Repeat last issue** (one tap)
 - **Returns** to stock
 - Optional **case number** on an issue
-- **Offline mode** (built last)
+- ~~Offline mode~~ dropped 2026-11-17: online only with a clear no-connection message (ADR 0033)
 - Identity: **shared device + PIN** and **personal login**
 - Price optional; quantity always ([ADR 0005](docs/decisions/0005-quantity-first-price-optional.md))
 - Reports: by department, by material, by employee, by period; Excel export
@@ -71,6 +71,24 @@ Mobile rules: inputs ≥16px (stops iOS zoom), `inputmode="decimal"` for qty, ta
 one column, works at 360px wide, thumb-reachable confirm button.
 
 ## 5. Phases
+
+**Status 2026-11-17: phases 0 to 10 done, v0.1.0.** Phases 4, 5, 6, 7 and 9 were built in
+parallel by separate agents in their own git worktrees, coordinated through a pinned GitHub
+issue (#6) with one issue per phase, reserved ADR numbers and test databases. Each PR was
+rebased, reviewed, checked in a browser and merged only after CI passed on GitHub.
+
+| Phase | PR | What landed |
+|---|---|---|
+| 4 Identity | #14, #17 | Registered tablets (one-time link, POST to claim), PIN with Argon2 and row-locked lockout, personal login |
+| 5 Kiosk | #19 | Scan/type, quantity, case no., confirm, done; repeat; returns; plain CSS + boosted htmx (ADR 0030) |
+| 6 Scanner | #18 | `attachScanner()`, native BarcodeDetector or vendored zxing-wasm, no CDN |
+| 7 Reports | #15 | Department, material, person; Excel export; 3 queries per page; `created_at` index (150 to 54 ms) |
+| 8 Online only | #21 | Offline mode dropped by the owner (ADR 0033); truthful no-connection message |
+| 9 Production | #16 | Docker image, Caddy HTTPS, admin and reports behind TOTP 2FA (ADR 0026), healthz, JSON logs, backups, CI image smoke test |
+| 10 Launch | this PR | AGPL-3.0, docs, templates, changelog, release workflow publishing to GHCR |
+
+Phase 11 (pilot) is next and needs a real lab.
+
 
 Each phase: **Build** → **Learn** → **Bugs you will probably hit** → **Interview story** →
 **Done when**. Log every real bug in [docs/BUGS.md](docs/BUGS.md).
@@ -178,7 +196,7 @@ names (`select_related`); report slow at 100k moves until the composite index ex
 **Story:** "Seeded 200k moves, report took 2.1 s, an index made it 40 ms. Here's the plan."
 **Done when:** dashboard < 200 ms on 200k seeded moves.
 
-### Phase 8: Offline mode (4-6 days, hardest)
+### Phase 8: Offline mode (4-6 days, hardest) [DROPPED: online only, ADR 0033]
 **Build:** service worker (cache shell + material list); IndexedDB outbox; sync on `online` /
 app open; server flags negative stock; admin "flagged moves" list. Per ADR 0008.
 **Learn:** PWAs, eventual consistency, conflict resolution, at-least-once delivery.

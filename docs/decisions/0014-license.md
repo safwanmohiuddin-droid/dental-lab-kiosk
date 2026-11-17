@@ -1,6 +1,6 @@
 # 0014. License
 
-- Status: Open (owner to decide before the repo goes public)
+- Status: Accepted (owner, 2026-11-17): **AGPL-3.0**
 - Date: 2026-11-16
 
 ## Options
@@ -11,3 +11,6 @@
 
 ## Recommendation
 AGPL-3.0 if you may host it yourself one day; Apache-2.0 if adoption matters most.
+
+## Decision
+AGPL-3.0. The project exists to help labs; a closed hosted fork would not. See `LICENSE`.

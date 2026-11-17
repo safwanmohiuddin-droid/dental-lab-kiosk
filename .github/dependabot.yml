@@ -16,3 +16,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The image must match requires-python (3.13); a Python upgrade is a deliberate change.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
