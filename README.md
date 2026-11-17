@@ -8,7 +8,7 @@ An open-source, self-hosted kiosk that shows dental labs which department consum
 material, what it costs, and who took it.
 
 [![CI](https://github.com/safwanmohiuddin-droid/dental-lab-kiosk/actions/workflows/ci.yml/badge.svg)](https://github.com/safwanmohiuddin-droid/dental-lab-kiosk/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.2.0-blue)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-green)
 ![Python](https://img.shields.io/badge/python-3.13-blue)
 ![Django](https://img.shields.io/badge/django-5.2%20LTS-0C4B33)

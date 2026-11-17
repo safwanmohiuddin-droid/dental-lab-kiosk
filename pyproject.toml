@@ -1,6 +1,6 @@
 [project]
 name = "dental-lab-kiosk"
-version = "0.0.0"
+version = "0.2.0"
 description = "Barcode material-issuing kiosk for dental labs"
 requires-python = ">=3.13,<3.14"
 dependencies = [
