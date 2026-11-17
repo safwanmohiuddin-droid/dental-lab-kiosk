@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "inventory",
     "kiosk",
+    "reports",
 ]
 
 # Phase 4: Argon2 first (ADR 0009); PINs and passwords use it, older hashes still verify.
