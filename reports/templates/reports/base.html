@@ -1,55 +1,42 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Consumption{% endblock %} | Material Kiosk</title>
-  <style>
-    :root { --bg:#fff; --fg:#1f2328; --muted:#636c76; --line:#d8dee4; --bar:#2f81f7; --warn:#9a6700; }
-    @media (prefers-color-scheme: dark) {
-      :root { --bg:#0d1117; --fg:#e6edf3; --muted:#8d96a0; --line:#30363d; --bar:#388bfd; --warn:#d29922; }
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
-           font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
-    main { max-width: 1000px; margin: 0 auto; }
-    nav a { margin-right: 16px; }
-    a { color: var(--bar); }
-    h1 { font-size: 1.4rem; margin: 8px 0 16px; }
-    h2 { font-size: 1.1rem; margin: 28px 0 8px; }
-    form.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 8px; }
-    form.filters label { display: flex; flex-direction: column; font-size: .85rem; color: var(--muted); }
-    input, select, button { font: inherit; min-height: 44px; padding: 6px 10px; }
-    .errors { color: var(--warn); }
-    .muted { color: var(--muted); font-size: .9rem; }
-    .warn { color: var(--warn); }
-    .table { overflow-x: auto; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
-    td.num, th.num { text-align: right; }
-    td.bar { width: 35%; min-width: 80px; }
-    .bar span { display: block; height: 10px; background: var(--bar); border-radius: 2px; }
-  </style>
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}Consumption{% endblock %} | Material kiosk</title>
+  <link rel="stylesheet" href="{% static 'ui/ui.css' %}">
 </head>
 <body>
-<main>
-  <nav>
-    <a href="{% url 'reports:dashboard' %}?{{ request.GET.urlencode }}">Dashboard</a>
-    <a href="{% url 'reports:materials' %}?{{ request.GET.urlencode }}">Materials</a>
-    <a href="{% url 'reports:people' %}?{{ request.GET.urlencode }}">People</a>
-    <a href="{% url 'admin:index' %}">Admin</a>
+<header class="bar">
+  <strong>Material kiosk</strong>
+  <a href="{% url 'admin:index' %}" class="muted">Lab setup</a>
+</header>
+<main class="wide">
+  {% with q=request.GET.urlencode name=request.resolver_match.url_name %}
+  <nav class="tabs" aria-label="Reports">
+    <a href="{% url 'reports:dashboard' %}?{{ q }}"{% if name == "dashboard" %} aria-current="page"{% endif %}>Overview</a>
+    <a href="{% url 'reports:materials' %}?{{ q }}"{% if name == "materials" %} aria-current="page"{% endif %}>Materials</a>
+    <a href="{% url 'reports:people' %}?{{ q }}"{% if name == "people" %} aria-current="page"{% endif %}>People</a>
   </nav>
+  {% endwith %}
   <h1>{% block heading %}{% endblock %}</h1>
-  <form class="filters" method="get">
-    <label>From {{ form.start }}</label>
-    <label>To {{ form.end }}</label>
-    <label>Department {{ form.department }}</label>
-    <button type="submit">Show</button>
-    <a href="?{{ request.GET.urlencode }}&amp;format=xlsx">Download Excel</a>
-  </form>
-  {% if form.errors %}<p class="errors">{{ form.non_field_errors|join:" " }}{% for f in form %}{{ f.errors|join:" " }}{% endfor %} Showing this month instead.</p>{% endif %}
-  <p class="muted">{{ f.start }} to {{ f.end }}{% if f.department %}, {{ f.department }}{% endif %}. Net quantity = issued minus returned. Cost counts only moves with a known price.</p>
+  <div class="pills" aria-label="Period">
+    {% for p in periods %}<a href="?{{ p.query }}"{% if p.current %} aria-current="true"{% endif %}>{{ p.label }}</a>{% endfor %}
+  </div>
+  <details{% if custom or form.errors or f.department %} open{% endif %}>
+    <summary>{% if custom %}{{ f.start|date:"j M Y" }} to {{ f.end|date:"j M Y" }}{% else %}Pick dates or a department{% endif %}{% if f.department %} &middot; {{ f.department }}{% endif %}</summary>
+    <form method="get" class="card">
+      <label for="id_start">From</label>{{ form.start }}
+      <label for="id_end">To</label>{{ form.end }}
+      <label for="id_department">Department</label>{{ form.department }}
+      <button type="submit">Show</button>
+    </form>
+  </details>
+  {% if form.errors %}<p class="error" role="alert">{{ form.non_field_errors|join:" " }}{% for fld in form %}{{ fld.errors|join:" " }}{% endfor %} Showing this month instead.</p>{% endif %}
   {% block content %}{% endblock %}
+  <p><a class="button secondary" href="?{{ request.GET.urlencode }}&amp;format=xlsx" style="max-width:20rem">Download as Excel</a></p>
+  <p class="muted">Used = taken minus returned. Cost only counts materials that have a price.</p>
 </main>
 </body>
 </html>

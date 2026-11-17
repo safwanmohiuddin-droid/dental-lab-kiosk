@@ -1,23 +1,16 @@
 {% extends "kiosk/base.html" %}
 {% block content %}
-<h1>Confirm</h1>
-<div class="card">
-  <dl>
-    <dt>Material</dt><dd>{{ material.name }}</dd>
-    <dt>Quantity</dt><dd>{{ qty.normalize }} {{ material.unit }}</dd>
-    <dt>Department</dt><dd>{{ request.employee.department.name }}</dd>
-    {% if case_ref %}<dt>Case</dt><dd>{{ case_ref }}</dd>{% endif %}
-  </dl>
-</div>
+<h1>That's more than usual</h1>
+<p class="warning" role="alert">You usually take <strong>{{ usual }} {{ material.unit }}</strong> of {{ material.name }}. This is <strong>{{ qty.normalize }}</strong>.</p>
 <form method="post" action="{% url 'kiosk:issue' %}">
   {% csrf_token %}
-  {{ form.material }}
+  <input type="hidden" name="material" value="{{ material.pk }}">
   <input type="hidden" name="qty" value="{{ qty }}">
   <input type="hidden" name="case_ref" value="{{ case_ref }}">
-  {# One key per confirm screen: a double tap or a resend records one issue (ADR 0007). #}
-  <input type="hidden" name="key" value="{{ form.key.value }}" data-client-key>
-  <button type="submit">Take {{ qty.normalize }} {{ material.unit }}</button>
+  {# Same key as the first press: confirming can never record it twice (ADR 0007). #}
+  <input type="hidden" name="key" value="{{ key }}">
+  <input type="hidden" name="confirmed" value="on">
+  <button type="submit">Yes, take {{ qty.normalize }} {{ material.unit }}</button>
 </form>
-<a class="button secondary"
-   href="{% url 'kiosk:home' %}?barcode={{ material.barcode|urlencode }}&amp;qty={{ qty.normalize }}">Change</a>
+<a class="button secondary" href="{% url 'kiosk:home' %}?barcode={{ material.barcode|urlencode }}&amp;qty={{ usual }}">Change the amount</a>
 {% endblock %}

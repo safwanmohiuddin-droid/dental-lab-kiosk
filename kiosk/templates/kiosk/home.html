@@ -1,57 +1,57 @@
 {% extends "kiosk/base.html" %}
 {% load static %}
 {% block content %}
-<h1>Take material</h1>
+{% if not material %}<h1>What are you taking?</h1>{% endif %}
 
 {# Its own GET form: a USB scanner's Enter looks the barcode up and never takes stock. #}
 <form method="get" action="{% url 'kiosk:home' %}">
-  <label for="barcode">Barcode</label>
-  <div class="row">
-    <input id="barcode" name="barcode" value="{{ barcode }}" autocomplete="off"
+  <label for="barcode">{% if material %}Scan something else{% else %}Scan or type the barcode{% endif %}</label>
+  <div class="scanrow">
+    <input id="barcode" name="barcode" value="{% if not material %}{{ barcode }}{% endif %}" autocomplete="off"
            enterkeyhint="search" {% if not material %}autofocus{% endif %} required>
     {# get_static_prefix, not static: no manifest lookup if the scanner isn't installed. #}
     <button type="button" class="secondary" hidden data-scan-for="barcode"
-            data-scanner-url="{% get_static_prefix %}scanner/scanner.js">Scan</button>
+            data-scanner-url="{% get_static_prefix %}scanner/scanner.js">Camera</button>
   </div>
-  <button type="submit" class="secondary">Look up</button>
 </form>
 
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
 {% if material %}
-<div class="card">
-  <dl>
-    <dt>Material</dt><dd>{{ material.name }}</dd>
-    <dt>In stock</dt><dd>{{ material.qty_on_hand.normalize }} {{ material.unit }}</dd>
-  </dl>
-  <form method="get" action="{% url 'kiosk:confirm' %}">
-    {{ form.non_field_errors }}
-    {{ form.material }}
-    {{ form.material.errors }}
-    <label for="qty">Quantity ({{ material.unit }})</label>
-    {{ form.qty.errors }}
-    <input id="qty" name="qty" inputmode="decimal" autocomplete="off" autofocus required
-           value="{{ form.qty.value|default_if_none:'' }}">
-    <label for="case_ref">Case number (optional)</label>
-    <input id="case_ref" name="case_ref" maxlength="50" autocomplete="off"
+<form class="card" method="post" action="{% url 'kiosk:issue' %}">
+  {% csrf_token %}
+  <h1 style="margin-top:0">{{ material.name }}</h1>
+  <p class="muted">{{ material.qty_on_hand.normalize }} {{ material.unit }} on the shelf</p>
+  <hr class="stroke">
+  {{ form.non_field_errors }}
+  {{ form.material }}
+  {% if form.material.errors %}<p class="error" role="alert">{{ form.material.errors|join:" " }}</p>{% endif %}
+  {% if form.qty.errors %}<p class="error" role="alert">{{ form.qty.errors|join:" " }}</p>{% endif %}
+  <label for="qty">How many ({{ material.unit }})</label>
+  <div class="stepper">
+    <button type="button" data-step="-1" aria-label="One less">&minus;</button>
+    <input id="qty" name="qty" inputmode="decimal" autocomplete="off" required data-qty
+           value="{{ form.qty.value|default_if_none:'1' }}">
+    <button type="button" data-step="1" aria-label="One more">+</button>
+  </div>
+  <details{% if form.case_ref.value %} open{% endif %}>
+    <summary>Add a case number</summary>
+    <input id="case_ref" name="case_ref" maxlength="50" autocomplete="off" aria-label="Case number"
            value="{{ form.case_ref.value|default_if_none:'' }}">
-    <button type="submit">Next</button>
-  </form>
-</div>
+  </details>
+  {# One key per screen: a double tap or a resend records one issue (ADR 0007). #}
+  <input type="hidden" name="key" value="{{ form.key.value }}" data-client-key>
+  <button type="submit">Take <span data-qty-label>{{ form.qty.value|default_if_none:'1' }}</span>&nbsp;{{ material.unit }}</button>
+</form>
 {% endif %}
 
-{% if recent %}
-<h2>Again</h2>
-<ul class="plain">
+{% if recent and not material %}
+<h2>Your usual</h2>
+<div class="rows">
   {% for r in recent %}
-  <li>
-    <a class="chip" href="{% url 'kiosk:home' %}?barcode={{ r.material.barcode|urlencode }}&amp;qty={{ r.qty.normalize }}">
-      <span>{{ r.material.name }}</span>
-      <span class="muted">{{ r.qty.normalize }} {{ r.material.unit }}</span>
-    </a>
-  </li>
+    <a href="{% url 'kiosk:home' %}?barcode={{ r.material.barcode|urlencode }}&amp;qty={{ r.qty.normalize }}">{{ r.material.name }}<span class="muted">{{ r.qty.normalize }} {{ r.material.unit }}</span></a>
   {% endfor %}
-</ul>
+</div>
 {% endif %}
 
 <a class="button secondary" href="{% url 'kiosk:returns' %}">Return something</a>

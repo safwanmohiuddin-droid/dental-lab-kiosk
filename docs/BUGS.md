@@ -2,6 +2,22 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: An always-on confirm screen was friction, not safety
+- **Symptom:** owner feedback: too many clicks. Every take had a confirm screen, so people learn
+  to tap through it, which is exactly when it stops preventing mistakes.
+- **Root cause:** safety applied uniformly instead of where errors happen.
+- **Fix:** take in one step; ask again only when the amount is over 3x that person's usual
+  (median of their last 10). The second look keeps the same request key, so it records once.
+- **Test:** `test_unusual_amount_asks_again_then_takes_once`, `test_usual_amount_does_not_ask`.
+- **Lesson:** "A confirmation people see every time is noise. Put the check where the risk is."
+
+### 2026-11-17: Admin actions only appear when a list has rows
+- **Symptom:** a new test for the action buttons failed on an empty list.
+- **Root cause:** Django hides the actions bar when there is nothing to act on; the test had no rows.
+- **Fix:** the test creates a department first. The behaviour was right; the test was wrong.
+- **Test:** `test_admin_actions_are_buttons`.
+- **Lesson:** "When a test fails, check the test's assumptions before changing the code."
+
 ### 2026-11-17: The 14-day return limit could be bypassed
 - **Symptom:** found when the owner asked "can users return something later?": a hand-made POST could return an issue from months ago.
 - **Root cause:** the limit lived in the query for the on-screen list; the return action looked the issue up with a different query that only checked ownership.

@@ -29,6 +29,7 @@ Status: `Proposed` (my default, waiting on owner) · `Accepted` · `Superseded b
 | [0033](0033-online-only.md) | Online only: no offline mode | Accepted |
 | [0034](0034-encrypted-offsite-backups.md) | Encrypted off-site backups, secret key rotation | Accepted |
 | [0035](0035-sign-in-mode-and-owner-tools.md) | Sign-in mode per lab; owner tools in the admin | Accepted |
+| [0036](0036-ux-rules-and-one-look.md) | UX follows published rules; one look everywhere | Accepted |
 
 Numbers 0017-0025, 0028-0029, 0031-0032 were reserved for parallel phases and not used.
 

@@ -1,0 +1,29 @@
+{% load i18n %}
+{% comment %}
+Actions as visible buttons instead of a dropdown plus "Go" (docs/ux-rules.md R6, R11; Jakob's law).
+Each button posts its own action name; index stays 0 because only the pressed button is sent.
+{% endcomment %}
+<div class="actions">
+  {% block actions %}
+    {% for field in action_form %}{% if field.name != "action" %}{{ field }}{% endif %}{% endfor %}
+    <input type="hidden" name="index" value="0">
+    <span class="action-buttons">
+      {% for value, label in action_form.fields.action.choices %}{% if value %}
+        <button type="submit" name="action" value="{{ value }}"
+                class="button{% if 'delete' in value %} danger{% endif %}">{{ label }}</button>
+      {% endif %}{% endfor %}
+    </span>
+    {% block actions-counter %}
+    {% if actions_selection_counter %}
+        <span class="action-counter" data-actions-icnt="{{ cl.result_list|length }}">{{ selection_note }}</span>
+        {% if cl.result_count != cl.result_list|length %}
+        <span class="all hidden">{{ selection_note_all }}</span>
+        <span class="question hidden">
+            <a role="button" href="#" title="{% translate "Click here to select the objects across all pages" %}">{% blocktranslate with cl.result_count as total_count %}Select all {{ total_count }} {{ module_name }}{% endblocktranslate %}</a>
+        </span>
+        <span class="clear hidden"><a role="button" href="#">{% translate "Clear selection" %}</a></span>
+        {% endif %}
+    {% endif %}
+    {% endblock %}
+  {% endblock %}
+</div>

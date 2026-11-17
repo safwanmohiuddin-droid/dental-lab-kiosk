@@ -1,14 +1,30 @@
 {% extends "kiosk/base.html" %}
 {% block content %}
 <h1>Who are you?</h1>
-{% for department, people in groups %}
-  <h2>{{ department.name }}</h2>
-  <ul class="people">
-    {% for person in people %}
-      <li><a class="button" href="{% url 'kiosk:pin' person.pk %}">{{ person.name }}</a></li>
+{% if people %}
+  <div class="search">
+    <label for="find">Find your name</label>
+    <input id="find" type="search" autocomplete="off" placeholder="Start typing" data-filter>
+  </div>
+  {% if recent %}
+  <h2>Recent</h2>
+  <div class="rows">
+    {% for person in recent %}
+      <a href="{% url 'kiosk:pin' person.pk %}" data-name="{{ person.name|lower }}">{{ person.name }}<span class="muted">{{ person.department.name }}</span></a>
     {% endfor %}
-  </ul>
-{% empty %}
-  <p>No employees have a PIN yet. Ask the owner to set one in the admin.</p>
-{% endfor %}
+  </div>
+  {% endif %}
+  <h2>Everyone</h2>
+  <div class="rows">
+    {% for person in people %}
+      <a href="{% url 'kiosk:pin' person.pk %}" data-name="{{ person.name|lower }}">{{ person.name }}<span class="muted">{{ person.department.name }}</span></a>
+    {% endfor %}
+  </div>
+  <p class="muted" data-filter-empty hidden>Nobody by that name. Ask the owner to add you.</p>
+{% else %}
+  <div class="card">
+    <p><strong>No one can sign in here yet.</strong></p>
+    <p class="muted">The owner adds people and sets their PIN in the admin, under Employees.</p>
+  </div>
+{% endif %}
 {% endblock %}

@@ -9,14 +9,14 @@
   timeout: a request hanging on bad WiFi shows the no-connection message (ADR 0033).{% endcomment %}
   <meta name="htmx-config"
         content='{"timeout":15000,"responseHandling":[{"code":"204","swap":false},{"code":"...","swap":true}]}'>
-  <link rel="stylesheet" href="{% static 'kiosk/kiosk.css' %}">
+  <link rel="stylesheet" href="{% static 'ui/ui.css' %}">
   <script src="{% static 'kiosk/vendor/htmx-2.0.11.min.js' %}"></script>
   <script type="module" src="{% static 'kiosk/kiosk.js' %}"></script>
 </head>
 <body hx-boost="true" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
   {% if request.employee %}
   <header class="bar">
-    <div>
+    <div class="who">
       <strong>{{ request.employee.name }}</strong>
       <span class="muted">{{ request.employee.department.name }}</span>
     </div>
