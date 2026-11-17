@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scanner demo</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; margin: 0 auto; padding: 16px; max-width: 32rem; }
+    input, button { font-size: 16px; min-height: 44px; }
+    input { width: 100%; box-sizing: border-box; padding: 0 8px; margin: 8px 0; }
+    button { padding: 0 16px; }
+    #log { padding-left: 1.2rem; }
+  </style>
+</head>
+<body>
+  <h1>Barcode scanner demo</h1>
+  <p>Scan with the camera, or click the field and use a USB scanner.</p>
+  <form id="form">
+    <label for="barcode">Barcode</label>
+    <input id="barcode" name="barcode" autocomplete="off" autofocus>
+    <button type="button" id="scan">Scan with camera</button>
+    <label><input type="checkbox" id="auto" style="width:auto;min-height:0"> Submit after scan</label>
+  </form>
+  <p>Secure context: <strong id="secure"></strong>.
+     Native BarcodeDetector: <strong id="native"></strong>.</p>
+  <h2>Log</h2>
+  <ol id="log"></ol>
+
+  <script type="module">
+    import { attachScanner } from "./scanner.js";
+
+    const $ = (id) => document.getElementById(id);
+    const log = (text) => {
+      const item = document.createElement("li");
+      item.textContent = `${new Date().toLocaleTimeString()} ${text}`;
+      $("log").prepend(item);
+    };
+
+    $("secure").textContent = window.isSecureContext ? "yes" : "no (camera will not work)";
+    $("native").textContent = "BarcodeDetector" in window ? "yes" : "no (WASM reader will be used)";
+
+    let auto = false;
+    $("auto").addEventListener("change", (e) => (auto = e.target.checked));
+    $("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      log(`submitted: ${$("barcode").value}`);
+    });
+
+    attachScanner($("scan"), $("barcode"), {
+      get autoSubmit() { return auto; },
+      onDetected: (code, { format, engine }) => log(`read ${code} (${format}, ${engine})`),
+      onError: (message) => log(`error: ${message}`),
+    });
+  </script>
+</body>
+</html>
