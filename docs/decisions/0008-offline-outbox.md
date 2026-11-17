@@ -1,6 +1,6 @@
 # 0008. Offline mode: PWA outbox, server decides
 
-- Status: Accepted (owner, 2026-11-16)
+- Status: Superseded by [0033](0033-online-only.md) (owner, 2026-11-17)
 - Date: 2026-11-16
 
 ## Context
