@@ -42,7 +42,7 @@ Device        name, token_hash, registered_by→, last_seen_at, active
 Material      name, barcode (text, unique), unit (pcs/g/ml/disc…), category (text),
               qty_on_hand Decimal(12,3), avg_cost Decimal(14,4) NULL, active
 StockMove     kind (receipt|issue|return|adjust), material→, qty Decimal(12,3) signed,
-              unit_cost NULL, value NULL, employee→ NULL, department→ NULL,
+              unit_cost NULL, employee→ NULL, department→ NULL,
               case_ref NULL, returns_move→ NULL, import_batch→ NULL,
               idempotency_key UUID UNIQUE, client_at NULL, created_at, created_by→,
               device→ NULL, flagged (bool), note
@@ -95,6 +95,10 @@ pre-commit; tests pass locally, fail in CI because of a timezone or env var.
 fixtures.
 **Story:** "Why I put business rules in the database, not only in Python."
 **Done when:** you can't insert an issue without a department, even from `psql`.
+**Built (2026-11-17):** `inventory` app with Department, Employee, Material, StockMove; 9 check
+constraints, 3 composite indexes, read-only StockMove admin, `seed_demo` (4 departments).
+Deferred to the phase that uses them: PIN fields and Device (Phase 4), ImportBatch (Phase 3).
+Dropped `StockMove.value`: it is always `qty * unit_cost`, so reports compute it in SQL.
 
 ### Phase 2: The ledger service ★ core (3-4 days)
 **Build:** `inventory/services.py`: `receive()`, `issue()`, `return_()`, `adjust()`. Each:
