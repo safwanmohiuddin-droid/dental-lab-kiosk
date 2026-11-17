@@ -28,7 +28,8 @@ Status: `Proposed` (my default, waiting on owner) · `Accepted` · `Superseded b
 | [0030](0030-plain-css-and-boosted-htmx.md) | Plain CSS and a boosted htmx kiosk | Accepted |
 | [0033](0033-online-only.md) | Online only: no offline mode | Accepted |
 | [0034](0034-encrypted-offsite-backups.md) | Encrypted off-site backups, secret key rotation | Accepted |
+| [0035](0035-sign-in-mode-and-owner-tools.md) | Sign-in mode per lab; owner tools in the admin | Accepted |
 
-Numbers 0017-0025, 0028-0029, 0031-0032 and 0035 were reserved for parallel phases and not used.
+Numbers 0017-0025, 0028-0029, 0031-0032 were reserved for parallel phases and not used.
 
 Template: [0000-template.md](0000-template.md)

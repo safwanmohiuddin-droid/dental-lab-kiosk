@@ -16,14 +16,17 @@ from inventory import services
 from inventory.models import Department, Employee, Material, StockMove
 
 from . import auth
-from .models import Device, hash_token
+from .models import Device, LabSettings, hash_token
 
 RETURN_WINDOW = timedelta(days=14)
 
 
 def start(request):
-    """Shared tablet: pick your name. Anyone else: personal sign-in."""
-    if auth.current_device(request) is None:
+    """Shared tablet: pick your name. Anyone else: personal sign-in (per Lab settings)."""
+    lab = LabSettings.load()
+    if auth.current_device(request) is None or not lab.shared_allowed:
+        if not lab.personal_allowed:
+            return auth.not_available(request, auth.USE_TABLET)
         return redirect("kiosk:home") if request.user.is_authenticated else redirect("login")
     departments = (
         Department.objects.filter(active=True, employees__active=True)
@@ -35,6 +38,8 @@ def start(request):
 
 
 def pin(request, employee_id):
+    if not LabSettings.load().shared_allowed:
+        return auth.not_available(request, auth.USE_PHONE)
     device = auth.current_device(request)
     if device is None:
         return render(request, "kiosk/device_required.html", status=403)
@@ -206,9 +211,8 @@ def returns(request):
 @require_POST
 @auth.employee_required
 def return_move(request, move_id):
-    move = get_object_or_404(
-        StockMove, pk=move_id, employee=request.employee, kind=StockMove.Kind.ISSUE
-    )
+    # Same query as the list, so the 14-day and ownership rules can't drift apart.
+    move = get_object_or_404(_returnable(request.employee), pk=move_id)
     form = ReturnForm(request.POST)
     if not form.is_valid():
         return _returns_page(request, "Enter a quantity above zero.", move.pk)
@@ -240,6 +244,8 @@ def sign_out(request):
 def register(request, token):
     """GET only asks; POST consumes. Chat apps open links to build previews, which must not
     use up the one-time link."""
+    if not LabSettings.load().shared_allowed:
+        return auth.not_available(request, auth.USE_PHONE)
     device = Device.objects.filter(
         token_hash=hash_token(token),
         active=True,
@@ -268,6 +274,11 @@ class PersonalLoginForm(AuthenticationForm):
 class PersonalLoginView(LoginView):
     form_class = PersonalLoginForm
     template_name = "kiosk/login.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not LabSettings.load().personal_allowed:
+            return auth.not_available(request, auth.USE_TABLET)
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         response = super().form_valid(form)

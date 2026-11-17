@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Lab settings**: choose how people sign in: shared tablet only, personal phones only, or both.
+- **Spreadsheets**: import and export departments, employees and materials (Excel, CSV, or paste
+  cells straight from Excel or Google Sheets), always with a preview first.
+- **Delete selected** deletes what has no history and archives the rest; **Restore** brings
+  archived items back.
+- **Undo** for a mistaken stock movement (adds a correcting movement) and a **Correct count**
+  screen for stock takes.
+- Setup checklist on the admin home page; plain-language labels.
+- Fix: the 14-day return limit is now enforced on the return itself, not only on the list.
+
 ## 0.2.0 (2026-11-17)
 
 - **Backups are now encrypted** with a public key (age) and can be copied off-site (rclone).

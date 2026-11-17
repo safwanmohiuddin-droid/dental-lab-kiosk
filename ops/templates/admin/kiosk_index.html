@@ -1,0 +1,27 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+{% if setup %}
+<div class="module" style="margin-bottom: 20px;">
+  <h2>{% if setup_done %}Setup complete{% else %}Getting started: set up your lab{% endif %}</h2>
+  {# A list, not a table: it wraps on a phone instead of squeezing columns. #}
+  <ol style="list-style: none; margin: 0; padding: 0 10px;">
+    {% for step in setup %}
+    <li style="list-style: none; padding: 8px 0; border-bottom: 1px solid var(--hairline-color);">
+      <strong>{% if step.done %}&#10003;{% else %}{{ forloop.counter }}.{% endif %}
+        <a href="{{ step.url }}">{{ step.title }}</a></strong><br>
+      <span>{{ step.help }}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  <p style="padding: 0 10px;">
+    Technicians use the kiosk at <a href="{% url 'kiosk:start' %}">/k/</a>.
+    See consumption at <a href="{% url 'reports:dashboard' %}">Reports</a>.
+    To remove something, select it and choose <em>Delete selected</em>: items with history are
+    archived instead, so past reports still add up. A wrong stock movement can be undone from
+    <em>Stock movements</em>.
+  </p>
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}

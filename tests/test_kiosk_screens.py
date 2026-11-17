@@ -248,19 +248,28 @@ def test_kiosk_assets_are_served(client):
         assert finders.find(path), path
 
 
-def test_no_template_comment_leaks_into_the_page(client):
+def test_no_template_comment_leaks_into_the_page(client, db):
     # A two-line {# #} comment once printed raw at the top of every kiosk page.
     html = client.get("/accounts/login/").content.decode()
     assert "{#" not in html and "#}" not in html and "{%" not in html
 
 
-def test_htmx_times_out_so_bad_wifi_shows_a_message(client):
+def test_htmx_times_out_so_bad_wifi_shows_a_message(client, db):
     html = client.get("/accounts/login/").content.decode()
     assert '"timeout":15000' in html
 
 
-def test_site_root_opens_the_kiosk(client):
+def test_site_root_opens_the_kiosk(client, db):
     # The root URL used to be a 404: every phase had its own path and none owned "/".
     response = client.get("/", follow=True)
     assert response.redirect_chain[0] == ("/k/", 302)
     assert response.status_code == 200
+
+
+def test_old_issue_cannot_be_returned_by_posting_directly(phone, stocked, employee):
+    # The 14-day limit was only applied to the list; a hand-made POST could return anything.
+    old = services.issue(stocked, 2, employee)
+    StockMove.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=15))
+    response = phone.post(f"/k/returns/{old.pk}/", {"qty": "1", "key": uuid.uuid4()})
+    assert response.status_code == 404
+    assert not StockMove.objects.filter(kind="return").exists()

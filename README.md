@@ -60,7 +60,9 @@ It works next to **any** accounting or lab software. Nothing to integrate on day
 | 🔁 | Repeat a recent issue in one tap |
 | ↩️ | Returns to stock, credited back to the department at the cost it was charged |
 | 🦷 | Optional case number on each issue |
-| 🔐 | Shared tablet with employee PIN and lockout, or personal login on your own phone |
+| 🔐 | Each lab chooses: shared tablet with employee PIN, personal phone logins, or both |
+| 🧾 | Import and export people and materials from Excel, CSV, or cells pasted from Google Sheets |
+| ↪️ | Undo a mistaken stock movement, correct a shelf count, delete or archive in one click |
 | 📊 | Reports by department, material and person, exportable to Excel |
 | 🛡️ | Admin and reports behind two-factor login; HTTPS, health check, JSON logs, tested backups |
 

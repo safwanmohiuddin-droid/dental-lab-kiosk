@@ -8,11 +8,12 @@ from django.db.models import Q
 
 QTY = {"max_digits": 12, "decimal_places": 3}  # grams, ml, fractions of a disc (ADR 0012)
 MONEY = {"max_digits": 14, "decimal_places": 4}
+ARCHIVE_HELP = "Untick to archive: hidden from the kiosk, kept in reports and history."
 
 
 class Department(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(default=True, help_text=ARCHIVE_HELP)
 
     class Meta:
         ordering = ["name"]
@@ -31,7 +32,7 @@ class Employee(models.Model):
         blank=True,
         help_text="Only for employees who sign in on their own phone.",
     )
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(default=True, help_text=ARCHIVE_HELP)
     # Shared-tablet sign-in (ADR 0009). Hashed with the first PASSWORD_HASHER (Argon2).
     pin_hash = models.CharField(max_length=128, blank=True)
     failed_pin_attempts = models.PositiveSmallIntegerField(default=0)
@@ -54,13 +55,17 @@ class Employee(models.Model):
 
 class Material(models.Model):
     name = models.CharField(max_length=200)
-    barcode = models.CharField(max_length=64, unique=True)
-    unit = models.CharField(max_length=20, default="pcs")
+    barcode = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text="The code on the label. Made-up codes like ZIR-001 are fine.",
+    )
+    unit = models.CharField(max_length=20, default="pcs", help_text="pcs, g, ml, disc...")
     category = models.CharField(max_length=100, blank=True)
     # Cache of the ledger (ADR 0004); only the stock services may change these.
     qty_on_hand = models.DecimalField(**QTY, default=0)
     avg_cost = models.DecimalField(**MONEY, null=True, blank=True)
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(default=True, help_text=ARCHIVE_HELP)
 
     class Meta:
         ordering = ["name"]
@@ -141,6 +146,7 @@ class StockMove(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "stock movement"
         indexes = [
             models.Index(fields=["department", "created_at"]),
             models.Index(fields=["material", "created_at"]),

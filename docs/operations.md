@@ -27,22 +27,28 @@ for the 6-digit code after the password.
 Lost phone: `docker compose -f compose.prod.yaml exec web python manage.py totp_setup <username> --replace`.
 
 ## First day setup
-All in the admin at `https://<DOMAIN>/admin/`.
+Sign in at `https://<DOMAIN>/admin/`. The home page shows a checklist that ticks itself off.
 
-1. **Departments**: add one per department (for example CAD/CAM, Ceramics, Model Room).
-2. **Employees**: add each technician with their department, then set a 4 to 6 digit PIN on
-   their page. Staff who will use their own phone also need a user account, linked on the
-   employee page (field "User").
-3. **Stock**: Inventory, Stock imports, Add. Download the template, fill it in, upload, check
-   the preview, press Commit. See [stock-import.md](stock-import.md).
-4. **Store-room tablet**: Kiosk, Devices, Add. The admin shows a one-time link (valid 24 hours).
-   Open it on the tablet and press "Register this device". From then on the tablet shows
-   "Who are you?" at `https://<DOMAIN>/k/`.
-5. **Labels**: print a barcode label (Code 128 or EAN-13) for every material without one; the
-   number must match the barcode column of the import.
+1. **Lab settings**: choose how people sign in (shared tablet only, personal phones only, or both).
+2. **Departments** and **Employees**: add them one by one, or click **Import** and upload Excel/CSV
+   or paste cells copied from Excel or Google Sheets (columns `name, department, active`; missing
+   departments are created). You always see a preview before anything is saved.
+3. **Stock**: Stock and people, Stock imports, Add. Download the template, fill it in, upload,
+   check the preview, press Commit. See [stock-import.md](stock-import.md).
+4. Shared tablet: set a PIN on each employee, then Store-room tablets, Add, and open the link it
+   shows on the tablet. Personal phones: create a user for each person and link it on their
+   employee page.
+5. **Labels**: print a barcode label (Code 128 or EAN-13) for every material without one.
 
-Staff phones: open `https://<DOMAIN>/k/` and sign in with the linked user account.
-Reports: `https://<DOMAIN>/r/` (staff with two-factor login).
+Day to day:
+- **Wrong stock movement?** Stock movements, select it, *Undo selected*. History is never edited;
+  a correcting movement is added.
+- **Shelf count differs?** Materials, *Correct count* next to the stock figure.
+- **Remove something?** Select it, *Delete selected*. Items with history are archived (hidden from
+  the kiosk, kept in reports); *Restore selected* brings them back.
+- **Someone locked out of their PIN?** Employees, select them, *Unlock PIN sign-in*.
+
+Staff phones: `https://<DOMAIN>/k/`. Reports: `https://<DOMAIN>/r/` (staff with two-factor login).
 
 ## Check it is healthy
 - `https://<DOMAIN>/healthz` returns `{"status": "ok", "database": "ok"}` (503 if the database is

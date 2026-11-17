@@ -4,6 +4,7 @@ Every function: lock the material row, validate, insert one StockMove, update th
 qty_on_hand / avg_cost, all in one transaction. Quantities passed in are positive amounts.
 """
 
+import uuid
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
@@ -12,6 +13,7 @@ from django.db.models import Sum
 from .models import Material, StockMove
 
 COST_PLACES = Decimal("0.0001")
+UNDO_KEYS = uuid.UUID("2b1f0d7e-5c1a-4e8b-9a64-0d2c5e7f1a93")  # undo of move N has a fixed key
 
 
 def plain(qty):
@@ -201,3 +203,37 @@ def adjust(material, qty, *, note, key=None, user=None):
         created_by=user,
         note=note,
     )
+
+
+@transaction.atomic
+def count(material, counted, *, note, user=None):
+    """Set stock to what was physically counted. The difference is worked out under the row
+    lock, so an issue happening at the same moment can't make the correction wrong.
+    Returns the adjustment, or None when the count already matches."""
+    counted = _amount(counted)
+    if counted < 0:
+        raise StockError("A count can't be below zero.")
+    material = _locked(material.pk)
+    difference = counted - material.qty_on_hand
+    if difference == 0:
+        return None
+    return adjust(material, difference, note=note, user=user)
+
+
+@transaction.atomic
+def undo(move, *, user=None):
+    """Reverse a mistaken movement with a new one; history is never edited (ADR 0004).
+    Undoing the same movement twice gives back the first undo."""
+    key = uuid.uuid5(UNDO_KEYS, str(move.pk))
+    if done := StockMove.objects.filter(idempotency_key=key).first():
+        return done
+    note = f"Undo of movement #{move.pk}"
+    if move.kind == StockMove.Kind.ISSUE:
+        returned = move.returns.aggregate(total=Sum("qty"))["total"] or 0
+        left = -move.qty - returned
+        if left <= 0:
+            raise StockError("Everything taken has already been returned.")
+        return return_(move, left, key=key, user=user, note=note)
+    if move.kind in (StockMove.Kind.RECEIPT, StockMove.Kind.ADJUST):
+        return adjust(move.material, -move.qty, note=note, key=key, user=user)
+    raise StockError("A return can't be undone. Take the material again instead.")

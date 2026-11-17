@@ -1,8 +1,9 @@
 from django.contrib import admin, messages
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import Device
+from .models import Device, LabSettings
 
 
 @admin.register(Device)
@@ -38,3 +39,17 @@ class DeviceAdmin(admin.ModelAdmin):
             token = device.new_link_token(request.user)
             device.save()
             self._show_link(request, device, token)
+
+
+@admin.register(LabSettings)
+class LabSettingsAdmin(admin.ModelAdmin):
+    """A single settings page: the list view jumps straight to it."""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        return redirect("admin:kiosk_labsettings_change", LabSettings.load().pk)
