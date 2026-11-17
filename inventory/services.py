@@ -76,7 +76,7 @@ def _replay(key, **expected):
 
 
 @transaction.atomic
-def receive(material, qty, unit_cost=None, *, key=None, user=None, note=""):
+def receive(material, qty, unit_cost=None, *, key=None, user=None, note="", import_batch=None):
     qty, unit_cost = _positive(qty), _amount(unit_cost)
     if unit_cost is not None and unit_cost < 0:
         raise StockError("Cost can't be negative.")
@@ -94,6 +94,7 @@ def receive(material, qty, unit_cost=None, *, key=None, user=None, note=""):
         unit_cost=unit_cost,
         created_by=user,
         note=note,
+        import_batch=import_batch,
     )
 
 

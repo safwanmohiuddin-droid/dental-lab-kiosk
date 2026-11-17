@@ -131,6 +131,13 @@ cells; a 50 MB file (size limit); formulas showing `None` (`data_only=True`).
 **Story:** "Excel silently ate my leading zeros. Here's how the preview step caught it."
 **Done when:** importing the same file twice is refused; one bad row blocks the whole file.
 
+**Built (2026-11-17):** `inventory/excel_import.py` + `ImportBatch` model. The UI lives in the
+Django admin (Stock imports: Add = upload, view = preview, Commit button, template download)
+instead of a separate `/import/` page: admin already gives login, permissions and layout, and
+this is an owner-only screen. Row keys are `uuid5(batch, row)`, so commit is idempotent per row;
+committing twice is a no-op. Numeric barcodes that lost a leading zero are matched back and
+explained. 76 tests. Also found and fixed: `TIME_ZONE` semantics (ADR 0016).
+
 ### Phase 4: Identity (2 days)
 **Build:** device registration (admin generates a one-time link → signed long-lived cookie);
 PIN login only on registered devices; argon2; lockout; personal login with remember-me;

@@ -2,6 +2,26 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: Admin showed 6:54 a.m. for something done at 10:54
+- **Symptom:** first browser test of the import screen showed UTC times to a user in UTC+4.
+- **Root cause:** my mental model was wrong. I kept `TIME_ZONE = "UTC"` thinking it controlled
+  storage. With `USE_TZ = True` storage is always UTC; `TIME_ZONE` only controls display and
+  where a day or month starts.
+- **Fix:** `TIME_ZONE` comes from `.env` per install (ADR 0016, superseding part of 0012).
+- **Test:** checked in the browser; Phase 7 adds a month-boundary test with a non-UTC zone.
+- **Lesson:** "Unit tests passed; only a real screen showed the wrong time. Always look at the UI."
+
+### 2026-11-17: A Commit button that would have silently done nothing
+- **Symptom:** caught while writing the template: the commit `<form>` was going into a template
+  block that renders *inside* the admin's own `<form>`.
+- **Root cause:** HTML forbids nested forms; browsers drop the inner `<form>` tag without an
+  error, so the button would point at a form that doesn't exist.
+- **Fix:** render the commit form after the admin form and link the button with `form="..."`.
+  Clicked in a real browser: POST, redirect, 3 rows imported.
+- **Test:** `test_admin_upload_preview_and_commit` covers the endpoint; the HTML structure was
+  verified in the browser.
+- **Lesson:** "Read the framework's template before overriding a block; where it renders matters."
+
 ### 2026-11-17: Stacked PR closed instead of merged
 - **Symptom:** after squash-merging PR #2 with "delete branch", PR #3 (Phase 2, based on #2's
   branch) showed CLOSED, and `main` had Phase 1 but not Phase 2.

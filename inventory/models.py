@@ -65,6 +65,35 @@ class Material(models.Model):
         return f"{self.name} ({self.barcode})"
 
 
+class ImportBatch(models.Model):
+    """One uploaded Excel file of deliveries: validated first, committed all at once (ADR 0006)."""
+
+    class Status(models.TextChoices):
+        VALID = "valid", "Ready to commit"
+        INVALID = "invalid", "Has errors"
+        COMMITTED = "committed", "Committed"
+
+    file_name = models.CharField(max_length=255)
+    file_sha256 = models.CharField(max_length=64, unique=True)
+    create_missing = models.BooleanField(
+        "create unknown materials", default=False, help_text="Add new barcodes as new materials."
+    )
+    status = models.CharField(max_length=10, choices=Status)
+    rows = models.JSONField(default=list)
+    errors = models.JSONField(default=list)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    committed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "stock imports"
+        verbose_name = "stock import"
+
+    def __str__(self):
+        return f"{self.file_name} ({self.get_status_display()})"
+
+
 class StockMove(models.Model):
     """Append-only ledger row. Never updated or deleted; fix mistakes with a reversing move."""
 
@@ -92,6 +121,9 @@ class StockMove(models.Model):
     )
     flagged = models.BooleanField(default=False)
     note = models.TextField(blank=True)
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.PROTECT, null=True, blank=True, related_name="moves"
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -131,6 +163,10 @@ class StockMove(models.Model):
             models.CheckConstraint(
                 condition=Q(kind="return") | Q(returns_move__isnull=True),
                 name="move_only_returns_link_issue",
+            ),
+            models.CheckConstraint(
+                condition=Q(kind="receipt") | Q(import_batch__isnull=True),
+                name="move_only_receipts_come_from_imports",
             ),
         ]
 

@@ -18,9 +18,10 @@ Status: `Proposed` (my default, waiting on owner) · `Accepted` · `Superseded b
 | [0009](0009-two-identity-paths.md) | Shared device + PIN, and personal login | Accepted |
 | [0010](0010-camera-scanning.md) | Camera scanning: native API + WASM fallback | Accepted |
 | [0011](0011-returns.md) | Returns credit the department at issue cost | Accepted |
-| [0012](0012-time-and-numbers.md) | UTC storage, lab-timezone reports, Decimal only | Accepted |
+| [0012](0012-time-and-numbers.md) | UTC storage, lab-timezone reports, Decimal only | Accepted, time zone part superseded by 0016 |
 | [0013](0013-single-tenant-self-hosted.md) | Single tenant, self-hosted, docker compose | Accepted |
 | [0014](0014-license.md) | License | Open |
 | [0015](0015-native-postgres-for-local-dev.md) | Portable native PostgreSQL 16 for local dev | Accepted |
+| [0016](0016-time-zone-is-the-labs-zone.md) | Django TIME_ZONE is the lab's time zone | Accepted |
 
 Template: [0000-template.md](0000-template.md)
