@@ -1,0 +1,5 @@
+<td class="num">{{ r.net_qty|floatformat:"-3g" }}</td>
+<td class="num">{% if r.net_cost is None %}-{% else %}{{ r.net_cost|floatformat:"2g" }}{% endif %}</td>
+<td class="num">{{ r.issues }}</td>
+<td class="num{% if r.coverage is not None and r.coverage < 100 %} warn{% endif %}">{% if r.coverage is None %}-{% else %}{{ r.coverage }}%{% endif %}</td>
+<td class="bar"><span style="width: {{ r.bar }}%"></span></td>

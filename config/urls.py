@@ -25,4 +25,6 @@ urlpatterns = [
     # Phase 4: kiosk sign-in
     path("k/", include("kiosk.urls")),
     path("accounts/login/", PersonalLoginView.as_view(), name="login"),
+    # Phase 7: reports
+    path("r/", include("reports.urls")),
 ]
