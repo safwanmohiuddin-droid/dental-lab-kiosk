@@ -114,6 +114,13 @@ materials in different orders (always lock by ascending id).
 **Story:** "I wrote a failing race-condition test, then fixed it with row locks."
 **Done when:** concurrency + Hypothesis tests green in CI, `check_ledger` reports 0 drift.
 
+**Built (2026-11-17):** `inventory/services.py` (`receive`, `issue`, `return_`, `adjust`) +
+`check_ledger`. Average cost rules: a receipt with no cost keeps the average; a receipt into
+empty or negative stock takes its own cost (no blend, no divide by zero). Idempotency keys are
+checked after the lock and refuse a key reused for a different move. 49 tests: unit, a
+deterministic race test (seen failing without the lock), and a Hypothesis test (seen failing on an
+injected bug).
+
 ### Phase 3: Excel import (2-3 days)
 **Build:** template download; upload → parse (openpyxl, `read_only=True`) → validate each row →
 preview with row errors → commit in one transaction through `receive()`; SHA-256 dedup.

@@ -2,6 +2,41 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: Stacked PR closed instead of merged
+- **Symptom:** after squash-merging PR #2 with "delete branch", PR #3 (Phase 2, based on #2's
+  branch) showed CLOSED, and `main` had Phase 1 but not Phase 2.
+- **Root cause:** #3's base branch was deleted by the merge before GitHub retargeted the PR, and a
+  PR whose base no longer exists is closed. Squash merging also means #2's original commit is not
+  in `main`, so #3's branch still carried it.
+- **Fix:** `git rebase --onto origin/main <phase-1 commit> phase-2-ledger` replays only the Phase 2
+  commit on top of the squashed `main`; tests re-run (49 pass); reopened as a new PR.
+- **Test:** none possible; it's a workflow bug. Rule written instead: with stacked PRs, merge the
+  first one *without* deleting its branch, let GitHub retarget the next PR, then delete.
+- **Lesson:** "Squash merging and stacked branches don't mix by default; `rebase --onto` is how you
+  cut a branch loose from a parent that was rewritten."
+
+### 2026-11-17: Two people took the last unit (lost update), reproduced on purpose
+- **Symptom:** with the row lock removed, the race test got `['ok', 'ok']`: both technicians
+  were given the last disc, and stock no longer matched the ledger.
+- **Root cause:** read-check-write without a lock. Both transactions read `qty_on_hand = 1`, both
+  passed the "enough stock?" check, both wrote. Postgres' default READ COMMITTED isolation does
+  not prevent this.
+- **Fix:** `select_for_update()` on the material row before checking (`inventory/services.py`).
+  The second request waits, then sees 0 and is refused.
+- **Test:** `tests/test_concurrency.py` (a 50 ms pause inside save makes the overlap certain, so
+  the test can't pass by luck). Passed 5 runs out of 5 with the lock.
+- **Lesson:** "I wrote the failing race test first and watched it fail, so I know the lock is what
+  fixes it, not timing."
+
+### 2026-11-17: Checking that the property-based test can actually fail
+- **Symptom:** 150 random operation sequences passed in 2.5 s; fast enough to be suspicious.
+- **Check:** injected a bug (removed the over-return guard). Hypothesis failed it and shrank the
+  case to the minimum: return 0.002 of an issue of 0.001.
+- **Fix:** none needed; guard restored.
+- **Test:** `tests/test_ledger_properties.py`.
+- **Lesson:** "A test you've never seen fail proves nothing. I mutate the code to prove the test
+  bites."
+
 ### 2026-11-16: CI broke after bumping actions: "unable to find version `v10`"
 - **Symptom:** CI failed in 2 s at "Set up job" right after moving off the Node.js 20 warning.
 - **Root cause:** I assumed every action publishes a moving major tag (`@v10`). `setup-uv` only
