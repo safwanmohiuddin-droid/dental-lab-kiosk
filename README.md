@@ -88,8 +88,8 @@ cause in [docs/BUGS.md](docs/BUGS.md).
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Project foundations, CI, decision records | ✅ Done |
-| 1 | Data model and admin | ⏳ Next |
-| 2 | Stock ledger with locking and property-based tests | |
+| 1 | Data model and admin | ✅ Done |
+| 2 | Stock ledger with locking and property-based tests | ⏳ Next |
 | 3 | Excel import | |
 | 4 | Employee PIN and personal login | |
 | 5 | Mobile kiosk | |
