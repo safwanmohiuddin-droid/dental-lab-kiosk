@@ -1,5 +1,5 @@
-# Vendored third-party files must stay byte-for-byte identical to the upstream release.
-exclude: ^inventory/static/scanner/vendor/
+# Vendored third-party files must stay byte-identical to the upstream release.
+exclude: '/vendor/'
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

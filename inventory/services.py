@@ -14,6 +14,11 @@ from .models import Material, StockMove
 COST_PLACES = Decimal("0.0001")
 
 
+def plain(qty):
+    """10.000 -> "10", 2.500 -> "2.5". Plain normalize() would print 10 as "1E+1"."""
+    return f"{qty.normalize():f}"
+
+
 class StockError(ValueError):
     """A stock operation that must not happen. The message is safe to show to users."""
 
@@ -126,7 +131,7 @@ def issue(
     short = qty > material.qty_on_hand
     if short and not allow_negative:
         raise InsufficientStock(
-            f"Only {material.qty_on_hand.normalize()} {material.unit} of {material.name} in stock."
+            f"Only {plain(material.qty_on_hand)} {material.unit} of {material.name} in stock."
         )
     return _post(
         material,
@@ -156,7 +161,7 @@ def return_(issue_move, qty, *, key=None, user=None, note=""):
     returned = issue_move.returns.aggregate(total=Sum("qty"))["total"] or 0
     left = -issue_move.qty - returned
     if qty > left:
-        raise StockError(f"Only {left.normalize()} {material.unit} left to return.")
+        raise StockError(f"Only {plain(left)} {material.unit} left to return.")
     return _post(
         material,
         key,

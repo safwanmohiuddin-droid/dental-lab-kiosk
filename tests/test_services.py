@@ -102,6 +102,16 @@ def test_issue_more_than_on_hand_is_refused(material, employee):
     assert fresh(material).qty_on_hand == 3 and not StockMove.objects.filter(kind="issue")
 
 
+def test_stock_messages_print_round_numbers_plainly(material, employee):
+    # Decimal("10.000").normalize() is 1E+1; users must see "10".
+    services.receive(material, 10)
+    with pytest.raises(InsufficientStock, match="Only 10 disc of"):
+        services.issue(material, 11, employee)
+    taken = services.issue(material, 10, employee)
+    with pytest.raises(StockError, match="Only 10 disc left to return"):
+        services.return_(taken, 20)
+
+
 def test_offline_issue_beyond_stock_is_recorded_and_flagged(material, employee):
     move = services.issue(material, 2, employee, allow_negative=True)
     assert move.flagged and fresh(material).qty_on_hand == -2

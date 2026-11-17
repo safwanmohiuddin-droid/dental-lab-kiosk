@@ -1,0 +1,25 @@
+{% extends "kiosk/base.html" %}
+{% block title %}Return{% endblock %}
+{% block content %}
+<h1>Return to stock</h1>
+<p class="muted">Your issues from the last 14 days.</p>
+{% for move in moves %}
+<form class="card" method="post" action="{% url 'kiosk:return_move' move.pk %}">
+  {% csrf_token %}
+  <dl>
+    <dt>Material</dt><dd>{{ move.material.name }}</dd>
+    <dt>Taken</dt><dd>{{ move.created_at|date:"j M, H:i" }}{% if move.case_ref %} · case {{ move.case_ref }}{% endif %}</dd>
+    <dt>Can return</dt><dd>{{ move.left.normalize }} {{ move.material.unit }}</dd>
+  </dl>
+  {% if error and error_move == move.pk %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <label for="qty-{{ move.pk }}">Quantity to return</label>
+  <input id="qty-{{ move.pk }}" name="qty" inputmode="decimal" autocomplete="off"
+         value="{{ move.left.normalize }}" required>
+  <input type="hidden" name="key" value="{{ move.key }}" data-client-key>
+  <button type="submit">Return</button>
+</form>
+{% empty %}
+<p>Nothing to return from the last 14 days.</p>
+{% endfor %}
+<a class="button secondary" href="{% url 'kiosk:home' %}">Back</a>
+{% endblock %}

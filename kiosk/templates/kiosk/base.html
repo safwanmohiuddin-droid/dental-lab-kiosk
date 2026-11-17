@@ -1,20 +1,32 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}Material kiosk{% endblock %}</title>
-  <style>
-    /* Minimal placeholder styles; the kiosk screens phase owns the real design. */
-    body { font: 18px/1.4 system-ui, sans-serif; margin: 0 auto; max-width: 32rem; padding: 1rem; }
-    input, button, select { font-size: 1rem; min-height: 44px; box-sizing: border-box; }
-    input[type=password], input[type=text] { width: 100%; padding: .5rem; }
-    button, .button { display: block; width: 100%; padding: .6rem; margin: .4rem 0; }
-    .error { color: #b00020; }
-    ul.people { list-style: none; padding: 0; }
-  </style>
+  {# htmx ignores 4xx/5xx by default; the 403 "locked" PIN page must still show. #}
+  <meta name="htmx-config"
+        content='{"responseHandling":[{"code":"204","swap":false},{"code":"...","swap":true}]}'>
+  <link rel="stylesheet" href="{% static 'kiosk/kiosk.css' %}">
+  <script src="{% static 'kiosk/vendor/htmx-2.0.11.min.js' %}"></script>
+  <script type="module" src="{% static 'kiosk/kiosk.js' %}"></script>
 </head>
-<body>
-  {% block content %}{% endblock %}
+<body hx-boost="true" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% if request.employee %}
+  <header class="bar">
+    <div>
+      <strong>{{ request.employee.name }}</strong>
+      <span class="muted">{{ request.employee.department.name }}</span>
+    </div>
+    <form method="post" action="{% url 'kiosk:sign_out' %}">
+      {% csrf_token %}
+      <button type="submit" class="link">Sign out</button>
+    </form>
+  </header>
+  {% endif %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>
