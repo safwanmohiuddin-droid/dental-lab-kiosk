@@ -257,3 +257,10 @@ def test_no_template_comment_leaks_into_the_page(client):
 def test_htmx_times_out_so_bad_wifi_shows_a_message(client):
     html = client.get("/accounts/login/").content.decode()
     assert '"timeout":15000' in html
+
+
+def test_site_root_opens_the_kiosk(client):
+    # The root URL used to be a 404: every phase had its own path and none owned "/".
+    response = client.get("/", follow=True)
+    assert response.redirect_chain[0] == ("/k/", 302)
+    assert response.status_code == 200
