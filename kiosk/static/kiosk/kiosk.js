@@ -28,7 +28,12 @@ function init(root) {
     const qty = form.querySelector("[data-qty]");
     const label = form.querySelector("[data-qty-label]");
     if (!qty) return;
-    const sync = () => { if (label) label.textContent = qty.value || "0"; };
+    const sync = () => {
+      if (label) label.textContent = qty.value || "0";
+      qty.classList.remove("bump");
+      void qty.offsetWidth; // restart the animation on every change
+      qty.classList.add("bump");
+    };
     form.querySelectorAll("[data-step]").forEach((button) => {
       button.addEventListener("click", () => {
         const next = (parseFloat(qty.value) || 0) + Number(button.dataset.step);

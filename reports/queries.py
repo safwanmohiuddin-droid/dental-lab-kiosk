@@ -41,56 +41,6 @@ def consumption(start, end, department=None):
     return moves.filter(department=department) if department else moves
 
 
-def summarize(moves, *group_by):
-    return moves.values(*group_by).annotate(**CONSUMPTION)
-
-
-def totals(department_rows):
-    """Period totals summed from the department rows, saving one more scan of the moves.
-
-    Exact because every issue and return has a department (DB constraint).
-    """
-    rows = list(department_rows)
-    costs = [r["net_cost"] for r in rows if r["net_cost"] is not None]
-    row = {
-        "net_qty": sum(r["net_qty"] for r in rows),
-        "net_cost": sum(costs) if costs else None,
-        "issues": sum(r["issues"] for r in rows),
-        "priced": sum(r["priced"] for r in rows),
-    }
-    row["coverage"] = coverage(row)
-    return row
-
-
-def by_department(moves):
-    return summarize(moves, "department_id", "department__name").order_by("-net_qty")
-
-
-def by_material(moves):
-    rows = summarize(moves, "material_id", "material__name", "material__unit", "material__barcode")
-    return rows.order_by("-net_qty", "material__name")
-
-
-def by_person(moves):
-    rows = summarize(moves, "employee_id", "employee__name", "department__name")
-    return rows.order_by("-net_qty", "employee__name")
-
-
-def top_by_cost(rows, n):
-    """Highest known cost first; unknown cost last."""
-    return sorted(rows, key=lambda r: (r["net_cost"] is None, -(r["net_cost"] or 0)))[:n]
-
-
 def coverage(row):
     """Share of issues that carry a cost, as a whole percent; None when there were no issues."""
     return round(100 * row["priced"] / row["issues"]) if row["issues"] else None
-
-
-def with_bars(rows, key="net_qty"):
-    """Add each row's bar width (percent of the largest value) for CSS bar charts."""
-    rows = list(rows)
-    top = max((r[key] or 0 for r in rows), default=0)
-    for r in rows:
-        r["bar"] = round(100 * (r[key] or 0) / top) if top > 0 else 0
-        r["coverage"] = coverage(r)
-    return rows

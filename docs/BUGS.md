@@ -2,6 +2,34 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: An older report answer overwrote a newer one
+- **Symptom:** in the browser, two quick dropdown changes left "per Whole period" selected but a
+  weekly chart on screen.
+- **Root cause:** each change sent a request; the first answer arrived last and replaced the
+  second. Out-of-order responses.
+- **Fix:** `hx-sync="this:replace"`: a newer change cancels the request still in flight (the
+  network log shows the older one as aborted).
+- **Test:** `test_builder_updates_live_without_a_show_button` checks the attribute; the race was
+  reproduced and re-checked in a real browser.
+- **Lesson:** "Any live-updating UI needs a rule for which answer wins. The latest request should,
+  not the latest response."
+
+### 2026-11-17: A page-transition effect could block a data update
+- **Symptom:** after the race fix, the report sometimes didn't update at all; the console said
+  "Transition was aborted because of timeout in DOM update".
+- **Root cause:** htmx wraps the swap in the browser's View Transitions API; when the transition
+  times out, the swap is skipped and old data stays on screen.
+- **Fix:** removed View Transitions; motion is CSS on the new content, which can't block the swap.
+- **Test:** browser re-check: dropdowns, address, chart type and headline all agree.
+- **Lesson:** "Decoration must never be able to block data."
+
+### 2026-11-17: A link that set only some report choices silently showed the default report
+- **Symptom:** `/r/?period=last_month` showed this month.
+- **Root cause:** missing choices made the whole form invalid, so it fell back to the defaults.
+- **Fix:** defaults are merged in per field before validation.
+- **Test:** `test_presets_cover_last_month` (failed before the fix).
+- **Lesson:** "Partial input should degrade per field, not all at once."
+
 ### 2026-11-17: An always-on confirm screen was friction, not safety
 - **Symptom:** owner feedback: too many clicks. Every take had a confirm screen, so people learn
   to tap through it, which is exactly when it stops preventing mistakes.

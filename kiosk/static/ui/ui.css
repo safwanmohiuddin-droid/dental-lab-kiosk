@@ -117,3 +117,63 @@ nav.tabs a[aria-current="page"] { border-bottom: 3px solid var(--accent); font-w
 details summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--ink-soft); }
 .scanrow { display: grid; grid-template-columns: 1fr auto; gap: .5rem; align-items: center; }
 .scanrow button { width: auto; margin: 0; padding: 0 1.2rem; }
+
+/* ---------- Motion (ADR 0037). Short and purposeful; all of it off for "reduce motion". ---------- */
+:root { --ease: cubic-bezier(.2, .8, .2, 1); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* Page content eases in, one block after another. */
+main > * { animation: rise .45s var(--ease) both; }
+main > *:nth-child(2) { animation-delay: .04s; }
+main > *:nth-child(3) { animation-delay: .08s; }
+main > *:nth-child(4) { animation-delay: .12s; }
+main > *:nth-child(n+5) { animation-delay: .16s; }
+
+/* Things you touch respond. */
+button, .button, .rows a, .pills a, input, select {
+  transition: transform .12s var(--ease), background-color .2s, border-color .2s, box-shadow .2s, opacity .2s;
+}
+button:active, .button:active, .rows a:active { transform: scale(.97); }
+.rows a:hover, .card:hover { border-color: var(--ink-soft); }
+.rows a[hidden] { display: none; }
+.stepper input.bump { animation: bump .25s var(--ease); }
+.dots span.on { animation: pop .25s var(--ease); }
+
+/* Done: the tick draws itself. */
+.tick { width: 64px; height: 64px; margin: 0 auto; display: block; }
+.tick circle { fill: var(--ok-bg); }
+.tick path { fill: none; stroke: var(--ok); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round;
+             stroke-dasharray: 48; stroke-dashoffset: 48; animation: draw .5s .15s var(--ease) forwards; }
+
+/* No View Transitions API: when one times out, htmx skips the swap and the screen shows stale data.
+   New content animates itself in instead (the rise animations above), which can never block. */
+
+/* Live report updates fade instead of jumping. */
+#report.htmx-swapping { opacity: .3; transition: opacity .15s; }
+.htmx-request #report, #report.htmx-request { opacity: .55; transition: opacity .15s; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important; transition: none !important;
+  }
+  .tick path { stroke-dashoffset: 0; }
+}
+
+/* ---------- Report builder ---------- */
+.sentence { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .6rem; font-size: 1.15rem; margin: .5rem 0 1rem; }
+.sentence > span { color: var(--ink-soft); }
+.sentence select { width: auto; min-height: 44px; padding: .3rem 2rem .3rem .8rem; font: 600 1rem var(--sans);
+                   border-radius: 999px; background-color: var(--card); cursor: pointer; }
+.sentence select:hover { border-color: var(--ink-soft); }
+.filters { width: 100%; }
+.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 1rem; }
+.filter-grid label { margin-top: .5rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .75rem; margin: .5rem 0; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .8rem 1rem;
+        display: flex; flex-direction: column; gap: .2rem; }
+.stat strong { font: 400 1.8rem/1.1 var(--serif); }
+.chart-card { position: relative; height: 320px; }
+.report > * { animation: rise .4s var(--ease) both; }

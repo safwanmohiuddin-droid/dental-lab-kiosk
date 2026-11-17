@@ -1,0 +1,69 @@
+{% extends "reports/base.html" %}
+{% load report_tags %}
+{% block content %}
+<h1>Reports</h1>
+
+{# One sentence you edit. Every change redraws the report below, no button needed (ADR 0037). #}
+<form class="sentence" method="get" action="{% url 'reports:dashboard' %}"
+      hx-get="{% url 'reports:dashboard' %}" hx-trigger="change, submit" hx-target="#report"
+      hx-select="#report" hx-swap="outerHTML" hx-push-url="true"
+      hx-sync="this:replace">{# a newer change cancels an older request still in flight #}
+  <span>Show</span> {{ form.measure }}
+  <span>by</span> {{ form.by }}
+  <span>per</span> {{ form.every }}
+  <span>for</span> {{ form.period }}
+  <details class="filters"{% if form.period.value == "custom" or form.department.value or form.category.value or form.material.value or form.person.value %} open{% endif %}>
+    <summary>Dates and filters</summary>
+    <div class="filter-grid">
+      <label>From {{ form.start }}</label>
+      <label>To {{ form.end }}</label>
+      <label>Department {{ form.department }}</label>
+      <label>Category {{ form.category }}</label>
+      <label>Material {{ form.material }}</label>
+      <label>Person {{ form.person }}</label>
+    </div>
+    <p class="muted">Dates are used when the period is "Pick dates".</p>
+  </details>
+  <noscript><button type="submit">Show</button></noscript>
+</form>
+
+<section id="report" class="report" aria-live="polite">
+  {% if error %}<p class="error" role="alert">{{ error }} Showing the default report.</p>{% endif %}
+  <p class="muted">{{ report.spec.start|date:"j M Y" }} to {{ report.spec.end|date:"j M Y" }}</p>
+
+  {% if leader %}
+  <p class="headline"><strong>{{ leader.label }}</strong> leads. {{ report.measure_label }}: {{ leader.total|fmt:report.spec.measure }}.</p>
+  {% endif %}
+
+  <div class="stats">
+    <div class="stat"><span class="muted">{{ report.measure_label }}</span><strong>{{ report.total|fmt:report.spec.measure }}</strong></div>
+    <div class="stat"><span class="muted">Times taken</span><strong>{{ report.takes }}</strong></div>
+    <div class="stat"><span class="muted">Have a price</span><strong>{% if report.coverage is None %}-{% else %}{{ report.coverage }}%{% endif %}</strong></div>
+  </div>
+
+  {% for note in report.notes %}<p class="warning">{{ note }}</p>{% endfor %}
+
+  {% if report.chart %}
+  <div class="card chart-card"><canvas id="report-chart" aria-label="Chart of {{ report.measure_label|lower }}" role="img"></canvas></div>
+  {{ report.chart|json_script:"report-chart-data" }}
+  {% endif %}
+
+  {% if report.rows and report.takes %}
+  <div class="table card"><table>
+    <thead><tr>{% for c in report.columns %}<th{% if not forloop.first %} class="num"{% endif %}>{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for row in report.rows %}
+      <tr><td>{{ row.label }}</td>{% for v in row.values %}<td class="num">{{ v|fmt:report.spec.measure }}</td>{% endfor %}{% if row.values|length > 1 %}<td class="num"><strong>{{ row.total|fmt:report.spec.measure }}</strong></td>{% endif %}</tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="card"><p>Nothing was taken in this period. Try a longer period or fewer filters.</p></div>
+  {% endif %}
+
+  <p class="muted">Download this report:
+    <a href="?{{ query }}&amp;format=xlsx" hx-boost="false">Excel</a> &middot;
+    <a href="?{{ query }}&amp;format=csv" hx-boost="false">CSV</a>.
+    The page address is this report: bookmark or share it.</p>
+</section>
+{% endblock %}

@@ -63,7 +63,7 @@ It works next to **any** accounting or lab software. Nothing to integrate on day
 | 🔐 | Each lab chooses: shared tablet with employee PIN, personal phone logins, or both |
 | 🧾 | Import and export people and materials from Excel, CSV, or cells pasted from Google Sheets |
 | ↪️ | Undo a mistaken stock movement, correct a shelf count, delete or archive in one click |
-| 📊 | Reports by department, material and person, exportable to Excel |
+| 📊 | Report builder: units used, cost or times taken, by department, material, person, category or case, per day, week or month, with live charts and Excel/CSV export |
 | 🛡️ | Admin and reports behind two-factor login; HTTPS, health check, JSON logs, tested backups |
 
 The kiosk needs a network connection. If a phone loses WiFi, it says so plainly, and pressing

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Report builder**: any measure (units used, cost, times taken) by any breakdown (department,
+  material, person, category, case) per day, week or month, with filters; live chart and table,
+  no Show button; the page address is the report; Excel and CSV export what's on screen.
+- **Motion**: content eases in, buttons respond, the quantity bumps, the done tick draws itself,
+  charts animate. Off under "reduce motion".
 - **Redesign by published UX rules** (docs/ux-rules.md): one look across kiosk, reports and
   admin; name search and recent people on the tablet; an on-screen PIN pad; take in one step
   with a big stepper, with a second look only for unusually large amounts; "Saving..." feedback;

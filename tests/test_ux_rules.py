@@ -1,10 +1,8 @@
 """Checks for docs/ux-rules.md: the behaviour each rule promises, not the styling."""
 
 import uuid
-from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 
 from inventory import services
 from inventory.models import Department, Employee, Material, StockMove
@@ -64,33 +62,21 @@ def test_home_lists_your_usual_items(client, employee):
     assert "Your usual" in html and "?barcode=D-1&amp;qty=2" in html
 
 
-# R2, R12: reports in plain words, with a headline
+# R2, R12: reports in plain words, with a headline; R8: controls are a sentence, not buttons
 
 
 def test_reports_use_plain_words_and_a_headline(admin_client, employee):
     material = Material.objects.create(name="Disc", barcode="D-1")
     services.receive(material, 5)
     services.issue(material, 2, employee)
-    html = admin_client.get("/r/").content.decode()
-    assert f"<strong>{employee.department.name}</strong> used the most" in html
-    for word in ("Used", "Times taken", "Has a price"):
+    html = admin_client.get(
+        "/r/", {"by": "department", "every": "", "period": "this_month"}
+    ).content.decode()
+    assert f"<strong>{employee.department.name}</strong> leads." in html
+    for word in ("Units used", "Times taken", "Have a price", "Show", "by", "per", "for"):
         assert word in html
     for jargon in ("Net qty", "Priced<", ">Issues<"):
         assert jargon not in html
-
-
-def test_reports_offer_quick_periods_and_mark_the_current_one(admin_client, db):
-    html = admin_client.get("/r/").content.decode()
-    for label in ("This week", "This month", "Last month", "Last 12 months"):
-        assert label in html
-    assert 'aria-current="true">This month' in html  # the default period
-
-
-def test_last_month_link_shows_last_month(admin_client, department):
-    today = timezone.localdate()
-    last_month_end = today.replace(day=1) - timedelta(days=1)
-    url = f"/r/?start={last_month_end.replace(day=1)}&end={last_month_end}"
-    assert 'aria-current="true">Last month' in admin_client.get(url).content.decode()
 
 
 # R2, R8: admin home puts developer sections last, in plain words
