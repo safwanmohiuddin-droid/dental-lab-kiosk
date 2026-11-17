@@ -12,3 +12,7 @@ updates:
       # Stay on the Django LTS line (ADR 0002); move majors on purpose, not by bot.
       - dependency-name: django
         update-types: ["version-update:semver-major"]
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

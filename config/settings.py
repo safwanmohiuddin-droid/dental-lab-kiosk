@@ -21,6 +21,10 @@ INSTALLED_APPS = [
     "inventory",
     "kiosk",
     "reports",
+    # Phase 9: admin 2FA and operations
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "ops",
 ]
 
 # Phase 4: Argon2 first (ADR 0009); PINs and passwords use it, older hashes still verify.
@@ -33,10 +37,12 @@ LOGIN_REDIRECT_URL = "kiosk:home"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Phase 9: static files without nginx
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",  # Phase 9: adds user.is_verified()
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -78,3 +84,42 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Phase 9: production. Every value can be overridden from the environment; defaults follow
+# DEBUG so local development is unchanged and production is secure without extra setup.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # shortcut: no hashed file names, so browsers re-check static files every 60 s;
+    # switch to CompressedManifestStaticFilesStorage if that ever matters.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # Caddy terminates HTTPS
+SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=not DEBUG)
+SECURE_REDIRECT_EXEMPT = [r"^healthz$"]
+SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=not DEBUG)
+CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=not DEBUG)
+SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0 if DEBUG else 31536000)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", default=not DEBUG)
+# Preload is a commitment for the whole parent domain; each lab decides (ADR 0027).
+SILENCED_SYSTEM_CHECKS = ["security.W021"]
+ADMIN_REQUIRE_2FA = env.bool("ADMIN_REQUIRE_2FA", default=not DEBUG)  # ADR 0026
+OTP_TOTP_ISSUER = "Dental Lab Kiosk"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {"()": "ops.logging.JsonFormatter"},
+        "plain": {"format": "%(levelname)s %(name)s: %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": env("LOG_FORMAT", default="plain" if DEBUG else "json"),
+        },
+    },
+    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
+}
