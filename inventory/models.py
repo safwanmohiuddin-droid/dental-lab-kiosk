@@ -1,6 +1,8 @@
+import re
 import uuid
 
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
 from django.db import models
 from django.db.models import Q
 
@@ -30,12 +32,24 @@ class Employee(models.Model):
         help_text="Only for employees who sign in on their own phone.",
     )
     active = models.BooleanField(default=True)
+    # Shared-tablet sign-in (ADR 0009). Hashed with the first PASSWORD_HASHER (Argon2).
+    pin_hash = models.CharField(max_length=128, blank=True)
+    failed_pin_attempts = models.PositiveSmallIntegerField(default=0)
+    pin_locked_until = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+    def set_pin(self, pin):
+        # Not str.isdigit(): it also accepts non-ASCII digits like "١٢٣٤".
+        if not re.fullmatch(r"[0-9]{4,6}", pin):
+            raise ValueError("A PIN is 4 to 6 digits.")
+        self.pin_hash = make_password(pin)
+        self.failed_pin_attempts = 0
+        self.pin_locked_until = None
 
 
 class Material(models.Model):

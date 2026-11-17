@@ -18,12 +18,45 @@ class DepartmentAdmin(admin.ModelAdmin):
     search_fields = ["name"]
 
 
+class EmployeeForm(forms.ModelForm):
+    new_pin = forms.CharField(
+        label="New PIN",
+        required=False,
+        widget=forms.PasswordInput(attrs={"inputmode": "numeric", "autocomplete": "new-password"}),
+        help_text="4 to 6 digits for shared tablets. Leave empty to keep the current PIN.",
+    )
+
+    class Meta:
+        model = Employee
+        fields = ["name", "department", "user", "active"]
+
+    def clean_new_pin(self):
+        pin = self.cleaned_data["new_pin"]
+        if pin:
+            try:
+                self.instance.set_pin(pin)
+            except ValueError as error:
+                raise forms.ValidationError(str(error)) from error
+        return pin
+
+
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ["name", "department", "user", "active"]
+    form = EmployeeForm
+    list_display = ["name", "department", "user", "has_pin", "pin_locked_until", "active"]
     list_filter = ["department", "active"]
     search_fields = ["name"]
     autocomplete_fields = ["user"]
+    actions = ["unlock_pin"]
+
+    @admin.display(boolean=True, description="PIN set")
+    def has_pin(self, obj):
+        return bool(obj.pin_hash)
+
+    @admin.action(description="Unlock PIN sign-in")
+    def unlock_pin(self, request, queryset):
+        count = queryset.update(failed_pin_attempts=0, pin_locked_until=None)
+        messages.success(request, f"Unlocked {count} employee(s).")
 
 
 @admin.register(Material)
