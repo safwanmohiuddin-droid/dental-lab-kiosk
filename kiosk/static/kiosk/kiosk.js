@@ -29,3 +29,21 @@ if (window.htmx) {
 } else {
   init(document);
 }
+
+// Online only (ADR 0033). If a request never gets an answer we can't know whether the server
+// saved it, but the form still holds the same request key, so pressing again is safe (ADR 0007).
+function showNoConnection() {
+  if (document.getElementById("no-connection")) return;
+  const box = document.createElement("p");
+  box.id = "no-connection";
+  box.className = "error";
+  box.setAttribute("role", "alert");
+  box.textContent =
+    "No connection. Check the WiFi and press the button again; it will not be recorded twice.";
+  document.querySelector("main")?.prepend(box);
+}
+document.addEventListener("htmx:sendError", showNoConnection);
+document.addEventListener("htmx:timeout", showNoConnection);
+document.addEventListener("htmx:beforeRequest", () => {
+  document.getElementById("no-connection")?.remove();
+});

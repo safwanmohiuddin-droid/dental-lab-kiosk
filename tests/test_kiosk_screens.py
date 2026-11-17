@@ -246,3 +246,14 @@ def test_kiosk_assets_are_served(client):
         from django.contrib.staticfiles import finders
 
         assert finders.find(path), path
+
+
+def test_no_template_comment_leaks_into_the_page(client):
+    # A two-line {# #} comment once printed raw at the top of every kiosk page.
+    html = client.get("/accounts/login/").content.decode()
+    assert "{#" not in html and "#}" not in html and "{%" not in html
+
+
+def test_htmx_times_out_so_bad_wifi_shows_a_message(client):
+    html = client.get("/accounts/login/").content.decode()
+    assert '"timeout":15000' in html

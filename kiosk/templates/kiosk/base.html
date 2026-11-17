@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}Material kiosk{% endblock %}</title>
-  {# htmx ignores 4xx/5xx by default; the 403 "locked" PIN page must still show. #}
+  {% comment %}htmx ignores 4xx/5xx by default; the 403 "locked" PIN page must still show.
+  timeout: a request hanging on bad WiFi shows the no-connection message (ADR 0033).{% endcomment %}
   <meta name="htmx-config"
-        content='{"responseHandling":[{"code":"204","swap":false},{"code":"...","swap":true}]}'>
+        content='{"timeout":15000,"responseHandling":[{"code":"204","swap":false},{"code":"...","swap":true}]}'>
   <link rel="stylesheet" href="{% static 'kiosk/kiosk.css' %}">
   <script src="{% static 'kiosk/vendor/htmx-2.0.11.min.js' %}"></script>
   <script type="module" src="{% static 'kiosk/kiosk.js' %}"></script>
