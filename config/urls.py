@@ -16,8 +16,13 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+
+from kiosk.views import PersonalLoginView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # Phase 4: kiosk sign-in
+    path("k/", include("kiosk.urls")),
+    path("accounts/login/", PersonalLoginView.as_view(), name="login"),
 ]

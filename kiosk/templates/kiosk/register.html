@@ -1,0 +1,16 @@
+{% extends "kiosk/base.html" %}
+{% block content %}
+{% if invalid %}
+  <h1>Link not valid</h1>
+  <p>This registration link was already used, has expired, or the device was switched off.
+  Ask the owner for a new link.</p>
+{% else %}
+  <h1>Register this device</h1>
+  <p>This browser will become the shared tablet <strong>{{ device.name }}</strong>,
+  where employees sign in with their PIN.</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit">Register this device</button>
+  </form>
+{% endif %}
+{% endblock %}

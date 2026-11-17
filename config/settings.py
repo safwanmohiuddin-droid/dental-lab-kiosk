@@ -19,7 +19,16 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "inventory",
+    "kiosk",
 ]
+
+# Phase 4: Argon2 first (ADR 0009); PINs and passwords use it, older hashes still verify.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "kiosk:home"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

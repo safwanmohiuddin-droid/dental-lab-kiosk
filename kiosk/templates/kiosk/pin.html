@@ -1,0 +1,17 @@
+{% extends "kiosk/base.html" %}
+{% block content %}
+<h1>{{ employee.name }}</h1>
+{% if locked_until %}
+  <p class="error">Too many wrong PINs. Try again after {{ locked_until|time:"H:i" }}.</p>
+{% else %}
+  {% if error == "wrong" %}<p class="error">Wrong PIN.</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label for="pin">PIN</label>
+    <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]*"
+           autocomplete="off" maxlength="6" autofocus required>
+    <button type="submit">Sign in</button>
+  </form>
+{% endif %}
+<p><a href="{% url 'kiosk:start' %}">Not you?</a></p>
+{% endblock %}

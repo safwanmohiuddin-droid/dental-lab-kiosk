@@ -1,0 +1,6 @@
+{% extends "kiosk/base.html" %}
+{% block content %}
+<h1>This device can't use PIN sign-in</h1>
+<p>Only tablets registered by the owner can sign in with a PIN.
+On your own phone, <a href="{% url 'login' %}">sign in with your account</a>.</p>
+{% endblock %}

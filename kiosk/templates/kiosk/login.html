@@ -1,0 +1,13 @@
+{% extends "kiosk/base.html" %}
+{% block content %}
+<h1>Sign in</h1>
+<form method="post">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<p class="error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  <p>{{ form.username.label_tag }} {{ form.username }}</p>
+  <p>{{ form.password.label_tag }} {{ form.password }}</p>
+  <p><label>{{ form.remember }} {{ form.remember.label }}</label></p>
+  <input type="hidden" name="next" value="{{ next }}">
+  <button type="submit">Sign in</button>
+</form>
+{% endblock %}
