@@ -23,3 +23,11 @@ def issue(material, employee, department):
     return StockMove.objects.create(
         kind="issue", material=material, qty=-2, employee=employee, department=department
     )
+
+
+@pytest.fixture(autouse=True)
+def _plain_http_admin(settings):
+    # CI runs with DEBUG off (production defaults). The test client speaks plain HTTP and
+    # admin_client has no authenticator; tests/test_deploy.py turns both back on (ADR 0026).
+    settings.SECURE_SSL_REDIRECT = False
+    settings.ADMIN_REQUIRE_2FA = False

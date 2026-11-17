@@ -29,3 +29,53 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run python manage.py makemigrations --check --dry-run
       - run: uv run pytest
+      - name: Audit production dependencies for known vulnerabilities
+        run: |
+          uv export --no-dev --format requirements-txt --quiet --output-file requirements.txt
+          uvx pip-audit==2.10.1 -r requirements.txt --require-hashes --disable-pip
+
+  # The development machine has no Docker, so the image is built and exercised here.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Write a production-like .env
+        run: |
+          {
+            echo "DOMAIN=localhost"
+            echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')"
+            echo "POSTGRES_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+          } > .env
+      - name: Build and start web, db and caddy
+        run: docker compose -f compose.prod.yaml up -d --build --wait
+      - name: Health check through Caddy over HTTPS
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsk https://localhost/healthz && exit 0
+            sleep 2
+          done
+          exit 1
+      - name: Production settings pass check --deploy
+        run: docker compose -f compose.prod.yaml exec -T web python manage.py check --deploy --fail-level WARNING
+      - name: Static files, admin 2FA and JSON logs
+        run: |
+          curl -fsk -o /dev/null https://localhost/static/admin/css/base.css
+          curl -fsk https://localhost/admin/login/ | grep -q 'name="otp_token"'
+          curl -sk -o /dev/null https://localhost/no-such-page
+          docker compose -f compose.prod.yaml logs --no-log-prefix web | grep -q '"logger": "django.request"'
+      - name: Backup, then restore into a fresh database (restore drill)
+        run: |
+          ./scripts/backup.sh
+          dump=$(ls backups/kiosk-*.dump)
+          docker compose -f compose.prod.yaml exec -T db sh -c \
+            'createdb -U "$POSTGRES_USER" restore_drill && pg_restore -U "$POSTGRES_USER" -d restore_drill --no-owner' < "$dump"
+          count=$(docker compose -f compose.prod.yaml exec -T db sh -c \
+            'psql -U "$POSTGRES_USER" -d restore_drill -tAc "select count(*) from django_migrations"')
+          echo "restored migrations: $count"
+          test "$count" -gt 0
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f compose.prod.yaml logs
+      - name: Tear down
+        if: always()
+        run: docker compose -f compose.prod.yaml down -v

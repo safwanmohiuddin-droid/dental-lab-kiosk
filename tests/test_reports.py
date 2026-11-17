@@ -87,17 +87,33 @@ def test_anonymous_is_sent_to_login(client):
     assert response.status_code == 302 and "/admin/login/" in response.url
 
 
-def test_user_without_permission_gets_403(client, django_user_model):
-    user = django_user_model.objects.create_user("tech", password="unused-123")
+def owner(django_user_model, **fields):
+    user = django_user_model.objects.create_user("owner", password="unused-123", **fields)
+    user.user_permissions.add(Permission.objects.get(codename="view_stockmove"))
+    return user
+
+
+def test_staff_without_permission_gets_403(client, django_user_model):
+    user = django_user_model.objects.create_user("clerk", password="unused-123", is_staff=True)
     client.force_login(user)
     assert client.get(DASHBOARD).status_code == 403
 
 
-def test_view_permission_is_enough(client, django_user_model):
-    user = django_user_model.objects.create_user("owner", password="unused-123")
-    user.user_permissions.add(Permission.objects.get(codename="view_stockmove"))
-    client.force_login(user)
+def test_staff_with_view_permission_is_enough(client, django_user_model):
+    client.force_login(owner(django_user_model, is_staff=True))
     assert client.get(DASHBOARD).status_code == 200
+
+
+def test_kiosk_login_alone_does_not_open_reports(client, django_user_model):
+    # A non-staff user (personal kiosk login) is sent to the admin login, even with permission.
+    client.force_login(owner(django_user_model))
+    assert "/admin/login/" in client.get(DASHBOARD).url
+
+
+def test_reports_need_2fa_when_the_admin_does(client, django_user_model, settings):
+    settings.ADMIN_REQUIRE_2FA = True
+    client.force_login(owner(django_user_model, is_staff=True))  # password only, no TOTP
+    assert "/admin/login/" in client.get(DASHBOARD).url
 
 
 @pytest.mark.parametrize("url", ["/r/", "/r/materials/", "/r/people/"])
