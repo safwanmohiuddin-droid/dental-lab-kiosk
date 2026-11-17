@@ -1,9 +1,13 @@
 import io
+from functools import wraps
 
 from django import forms
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib import admin
+from django.contrib.auth.decorators import permission_required
+from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
 
@@ -16,11 +20,18 @@ XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def staff_report(view):
-    # Anonymous -> admin login; logged in without permission -> 403.
-    return login_required(
-        permission_required("inventory.view_stockmove", raise_exception=True)(view),
-        login_url="admin:login",
-    )
+    """Same gate as the admin (staff, and 2FA-verified when ADMIN_REQUIRE_2FA is on): a password
+    from the kiosk's personal login alone must not open cost reports.
+    Not allowed in -> admin login; allowed in without permission -> 403."""
+    view = permission_required("inventory.view_stockmove", raise_exception=True)(view)
+
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        if not admin.site.has_permission(request):  # needs the request, not just the user
+            return redirect_to_login(request.get_full_path(), reverse("admin:login"))
+        return view(request, *args, **kwargs)
+
+    return wrapper
 
 
 class PeriodForm(forms.Form):
