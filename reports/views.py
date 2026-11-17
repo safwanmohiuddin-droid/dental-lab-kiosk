@@ -1,3 +1,4 @@
+import csv
 import io
 from datetime import timedelta
 from functools import wraps
@@ -7,16 +8,15 @@ from django.contrib import admin
 from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from openpyxl import Workbook
 
-from inventory.models import Department
+from inventory.models import Department, Employee, Material
 
-from . import queries
+from . import engine
 
-TOP = 10
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
@@ -35,157 +35,152 @@ def staff_report(view):
     return wrapper
 
 
-class PeriodForm(forms.Form):
+def _presets():
+    today = timezone.localdate()  # the lab's date, not UTC (ADR 0016)
+    month = today.replace(day=1)
+    last_month_end = month - timedelta(days=1)
+    return {
+        "this_week": ("This week", today - timedelta(days=today.weekday()), today),
+        "this_month": ("This month", month, today),
+        "last_month": ("Last month", last_month_end.replace(day=1), last_month_end),
+        "last_90": ("Last 90 days", today - timedelta(days=89), today),
+        "this_year": ("This year", today.replace(month=1, day=1), today),
+        "custom": ("Pick dates", None, None),
+    }
+
+
+class ReportForm(forms.Form):
+    measure = forms.ChoiceField(
+        choices=[(k, v[0]) for k, v in engine.MEASURES.items()], initial="units"
+    )
+    by = forms.ChoiceField(
+        choices=[("", "Nothing")] + [(k, v[0]) for k, v in engine.DIMENSIONS.items()],
+        required=False,
+        initial="material",
+    )
+    every = forms.ChoiceField(
+        choices=[("", "Whole period")] + [(k, v[0]) for k, v in engine.GRAINS.items()],
+        required=False,
+        initial="week",
+    )
+    period = forms.ChoiceField(choices=[], initial="this_month")
     start = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     end = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
-    department = forms.ModelChoiceField(
-        Department.objects.all(), required=False, empty_label="All departments"
-    )
+    department = forms.ModelChoiceField(Department.objects.all(), required=False, empty_label="All")
+    category = forms.ChoiceField(required=False)
+    material = forms.ModelChoiceField(Material.objects.all(), required=False, empty_label="All")
+    person = forms.ModelChoiceField(Employee.objects.all(), required=False, empty_label="Everyone")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["period"].choices = [(k, v[0]) for k, v in _presets().items()]
+        categories = Material.objects.exclude(category="").values_list("category", flat=True)
+        self.fields["category"].choices = [("", "All")] + [(c, c) for c in sorted(set(categories))]
 
     def clean(self):
         data = super().clean()
-        default = _this_month()
-        data["start"] = data.get("start") or default["start"]
-        data["end"] = data.get("end") or default["end"]
-        if data["start"] > data["end"]:
-            raise forms.ValidationError("The start date is after the end date.")
+        label, start, end = _presets()[data.get("period") or "this_month"]
+        if data.get("period") == "custom":
+            start, end = data.get("start"), data.get("end")
+            if not (start and end):
+                raise forms.ValidationError("Pick both dates.")
+            if start > end:
+                raise forms.ValidationError("The start date is after the end date.")
+        data["start"], data["end"] = start, end
         return data
 
 
-def _this_month():
-    today = timezone.localdate()  # the lab's date, not UTC (ADR 0016)
-    return {"start": today.replace(day=1), "end": today, "department": None}
+DEFAULTS = {"measure": "units", "by": "material", "every": "week", "period": "this_month"}
 
 
-def _quick_periods(request, f):
-    """One-tap periods instead of date pickers (R6, R8)."""
-    today = timezone.localdate()
-    first = today.replace(day=1)
-    last_month_end = first - timedelta(days=1)
-    choices = [
-        ("This week", today - timedelta(days=today.weekday()), today),
-        ("This month", first, today),
-        ("Last month", last_month_end.replace(day=1), last_month_end),
-        ("Last 12 months", (first - timedelta(days=335)).replace(day=1), today),
-    ]
-    keep = request.GET.copy()
-    for name in ("start", "end", "format"):
-        keep.pop(name, None)
-    periods = []
-    for label, start, end in choices:
-        query = keep.copy()
-        query["start"], query["end"] = start.isoformat(), end.isoformat()
-        current = (f["start"], f["end"]) == (start, end)
-        periods.append({"label": label, "query": query.urlencode(), "current": current})
-    return periods
-
-
-def _page(request, template, form, f, **context):
-    periods = _quick_periods(request, f)
-    custom = not any(p["current"] for p in periods)
-    return render(
-        request, template, {"form": form, "f": f, "periods": periods, "custom": custom, **context}
+def _spec(request):
+    """The report the URL asks for; bad input shows its error and falls back to the default."""
+    # Missing choices fall back one by one, so a link that sets only "period" still works.
+    form = ReportForm({**DEFAULTS, **request.GET.dict()})
+    if not form.is_valid():
+        fallback = ReportForm(DEFAULTS)
+        fallback.is_valid()
+        data, error = (
+            fallback.cleaned_data,
+            " ".join(form.non_field_errors()) or "Check the choices.",
+        )
+    else:
+        data, error = form.cleaned_data, None
+    spec = engine.Spec(
+        start=data["start"],
+        end=data["end"],
+        measure=data["measure"],
+        by=data["by"],
+        every=data["every"],
+        department=data["department"],
+        category=data["category"],
+        material=data["material"],
+        person=data["person"],
     )
+    return form, spec, error
 
 
-def _period(request):
-    """Validated filters; an invalid query string shows its errors and falls back to this month."""
-    form = PeriodForm(request.GET)
-    return form, (form.cleaned_data if form.is_valid() else _this_month())
-
-
-# The lab's words, not database words (docs/ux-rules.md, R2).
-FIGURES = [
-    ("Used (taken minus returned)", "net_qty"),
-    ("Cost", "net_cost"),
-    ("Times taken", "issues"),
-    ("Has a price %", "coverage"),
-]
-DEPARTMENT = [("Department", "department__name"), *FIGURES]
-MATERIAL = [
-    ("Material", "material__name"),
-    ("Barcode", "material__barcode"),
-    ("Unit", "material__unit"),
-    *FIGURES,
-]
-PERSON = [("Employee", "employee__name"), ("Department", "department__name"), *FIGURES]
-
-
-def _xlsx(filename, sheets):
-    """sheets: [(title, columns, rows)] where columns are (header, row key) pairs."""
+def _export(report, fmt):
+    header = [c or "" for c in report.columns]
+    body = [
+        [r["label"], *r["values"]] + ([r["total"]] if len(r["values"]) > 1 else [])
+        for r in report.rows
+    ]
+    if not report.spec.by and not report.spec.every:
+        body = [[report.measure_label, report.total]]
+        header = ["", report.measure_label]
+    name = f"report-{report.spec.start}-{report.spec.end}"
+    if fmt == "csv":
+        out = io.StringIO()
+        writer = csv.writer(out)
+        writer.writerows([header, *body])
+        response = HttpResponse(out.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{name}.csv"'
+        return response
     wb = Workbook()
-    wb.remove(wb.active)
-    for title, columns, rows in sheets:
-        ws = wb.create_sheet(title)
-        ws.append([header for header, _ in columns])
-        for row in rows:
-            ws.append([row[key] for _, key in columns])
-    out = io.BytesIO()
-    wb.save(out)
-    response = HttpResponse(out.getvalue(), content_type=XLSX)
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    ws = wb.active
+    ws.title = "Report"
+    for row in [header, *body]:
+        ws.append(row)
+    data = io.BytesIO()
+    wb.save(data)
+    response = HttpResponse(data.getvalue(), content_type=XLSX)
+    response["Content-Disposition"] = f'attachment; filename="{name}.xlsx"'
     return response
 
 
-def _moves(f):
-    return queries.consumption(f["start"], f["end"], f["department"])
-
-
-def _wants_xlsx(request):
-    return request.GET.get("format") == "xlsx"
-
-
 @staff_report
-def dashboard(request):
-    form, f = _period(request)
-    moves = _moves(f)
-    # Three scans of the moves: departments, materials (both top lists), people.
-    departments = queries.with_bars(queries.by_department(moves))
-    materials = list(queries.by_material(moves))
-    top_qty = queries.with_bars(dict(r) for r in materials[:TOP])
-    top_cost = queries.with_bars(
-        (dict(r) for r in queries.top_by_cost(materials, TOP)), key="net_cost"
-    )
-    people = queries.with_bars(queries.by_person(moves)[:TOP])
-    if _wants_xlsx(request):
-        return _xlsx(
-            f"consumption-{f['start']}-{f['end']}.xlsx",
-            [
-                ("Departments", DEPARTMENT, departments),
-                ("Top materials by qty", MATERIAL, top_qty),
-                ("Top materials by cost", MATERIAL, top_cost),
-                ("Top people", PERSON, people),
-            ],
-        )
-    return _page(
+def builder(request):
+    form, spec, error = _spec(request)
+    report = engine.run(spec)
+    fmt = request.GET.get("format")
+    if fmt in ("csv", "xlsx"):
+        return _export(report, fmt)
+    leader = report.rows[0] if spec.by and report.rows else None
+    query = request.GET.copy()
+    query.pop("format", None)
+    return render(
         request,
-        "reports/dashboard.html",
-        form,
-        f,
-        **{
-            "top_department": departments[0] if departments else None,
-            "totals": queries.totals(departments),
-            "departments": departments,
-            "top_qty": top_qty,
-            "top_cost": top_cost,
-            "people": people,
+        "reports/builder.html",
+        {
+            "form": form,
+            "report": report,
+            "error": error,
+            "leader": leader,
+            "query": query.urlencode(),
         },
     )
 
 
 @staff_report
 def materials(request):
-    form, f = _period(request)
-    rows = queries.with_bars(queries.by_material(_moves(f)))
-    if _wants_xlsx(request):
-        return _xlsx(f"materials-{f['start']}-{f['end']}.xlsx", [("Materials", MATERIAL, rows)])
-    return _page(request, "reports/materials.html", form, f, rows=rows)
+    return redirect(
+        f"{reverse('reports:dashboard')}?by=material&every=&measure=units&period=this_month"
+    )
 
 
 @staff_report
 def people(request):
-    form, f = _period(request)
-    rows = queries.with_bars(queries.by_person(_moves(f)))
-    if _wants_xlsx(request):
-        return _xlsx(f"people-{f['start']}-{f['end']}.xlsx", [("People", PERSON, rows)])
-    return _page(request, "reports/people.html", form, f, rows=rows)
+    return redirect(
+        f"{reverse('reports:dashboard')}?by=person&every=&measure=units&period=this_month"
+    )

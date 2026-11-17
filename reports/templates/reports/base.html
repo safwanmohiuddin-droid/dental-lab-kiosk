@@ -4,8 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>{% block title %}Consumption{% endblock %} | Material kiosk</title>
+  <title>{% block title %}Reports{% endblock %} | Material kiosk</title>
   <link rel="stylesheet" href="{% static 'ui/ui.css' %}">
+  <script src="{% static 'kiosk/vendor/htmx-2.0.11.min.js' %}"></script>
+  <script src="{% static 'reports/vendor/chart-4.6.1.umd.min.js' %}"></script>
+  <script src="{% static 'reports/report.js' %}" defer></script>
 </head>
 <body>
 <header class="bar">
@@ -13,30 +16,7 @@
   <a href="{% url 'admin:index' %}" class="muted">Lab setup</a>
 </header>
 <main class="wide">
-  {% with q=request.GET.urlencode name=request.resolver_match.url_name %}
-  <nav class="tabs" aria-label="Reports">
-    <a href="{% url 'reports:dashboard' %}?{{ q }}"{% if name == "dashboard" %} aria-current="page"{% endif %}>Overview</a>
-    <a href="{% url 'reports:materials' %}?{{ q }}"{% if name == "materials" %} aria-current="page"{% endif %}>Materials</a>
-    <a href="{% url 'reports:people' %}?{{ q }}"{% if name == "people" %} aria-current="page"{% endif %}>People</a>
-  </nav>
-  {% endwith %}
-  <h1>{% block heading %}{% endblock %}</h1>
-  <div class="pills" aria-label="Period">
-    {% for p in periods %}<a href="?{{ p.query }}"{% if p.current %} aria-current="true"{% endif %}>{{ p.label }}</a>{% endfor %}
-  </div>
-  <details{% if custom or form.errors or f.department %} open{% endif %}>
-    <summary>{% if custom %}{{ f.start|date:"j M Y" }} to {{ f.end|date:"j M Y" }}{% else %}Pick dates or a department{% endif %}{% if f.department %} &middot; {{ f.department }}{% endif %}</summary>
-    <form method="get" class="card">
-      <label for="id_start">From</label>{{ form.start }}
-      <label for="id_end">To</label>{{ form.end }}
-      <label for="id_department">Department</label>{{ form.department }}
-      <button type="submit">Show</button>
-    </form>
-  </details>
-  {% if form.errors %}<p class="error" role="alert">{{ form.non_field_errors|join:" " }}{% for fld in form %}{{ fld.errors|join:" " }}{% endfor %} Showing this month instead.</p>{% endif %}
   {% block content %}{% endblock %}
-  <p><a class="button secondary" href="?{{ request.GET.urlencode }}&amp;format=xlsx" style="max-width:20rem">Download as Excel</a></p>
-  <p class="muted">Used = taken minus returned. Cost only counts materials that have a price.</p>
 </main>
 </body>
 </html>
