@@ -25,11 +25,12 @@ class Device(models.Model):
     )
     registered_at = models.DateTimeField(null=True, blank=True, editable=False)
     last_seen_at = models.DateTimeField(null=True, blank=True, editable=False)
-    active = models.BooleanField(default=True)
+    active = models.BooleanField(default=True, help_text="Untick to block this tablet.")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["name"]
+        verbose_name = "tablet"
 
     def __str__(self):
         return self.name
@@ -42,3 +43,38 @@ class Device(models.Model):
         self.registered_at = None
         self.registered_by = user
         return token
+
+
+class LabSettings(models.Model):
+    """One row of lab-wide choices the owner can change in the admin (ADR 0035)."""
+
+    class SignIn(models.TextChoices):
+        BOTH = "both", "Shared tablet and personal phones"
+        SHARED = "shared", "Shared tablet only: people pick their name and enter their PIN"
+        PERSONAL = "personal", "Personal phones only: everyone signs in with their own login"
+
+    sign_in = models.CharField(
+        "how people sign in", max_length=10, choices=SignIn, default=SignIn.BOTH
+    )
+
+    class Meta:
+        verbose_name = verbose_name_plural = "lab settings"
+
+    def __str__(self):
+        return "Lab settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # there is only ever one
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+    @property
+    def shared_allowed(self):
+        return self.sign_in in (self.SignIn.BOTH, self.SignIn.SHARED)
+
+    @property
+    def personal_allowed(self):
+        return self.sign_in in (self.SignIn.BOTH, self.SignIn.PERSONAL)

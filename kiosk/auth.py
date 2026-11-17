@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from inventory.models import Employee
 
-from .models import Device, hash_token
+from .models import Device, LabSettings, hash_token
 
 DEVICE_COOKIE = "kiosk_device"
 DEVICE_COOKIE_SALT = "kiosk.device"
@@ -74,13 +74,22 @@ def start_shared_session(request, employee):
     request.session.set_expiry(SHARED_IDLE_SECONDS)
 
 
-def _resolve(request):
+def not_available(request, message):
+    """The lab's sign-in setting (Admin, Lab settings) switched this way of signing in off."""
+    return render(request, "kiosk/not_available.html", {"message": message}, status=403)
+
+
+USE_TABLET = "This lab signs in at the store-room tablet. Please use the tablet."
+USE_PHONE = "This lab doesn't use a shared tablet. Sign in on your own phone."
+
+
+def _resolve(request, lab):
     employee_id = request.session.get(SESSION_KEY)
-    if employee_id and current_device(request):
+    if lab.shared_allowed and employee_id and current_device(request):
         emp = Employee.objects.filter(pk=employee_id, active=True).first()
         if emp:
             return emp, "shared"
-    if request.user.is_authenticated:
+    if lab.personal_allowed and request.user.is_authenticated:
         emp = Employee.objects.filter(user=request.user, active=True).first()
         if emp:
             return emp, "personal"
@@ -90,9 +99,12 @@ def _resolve(request):
 def employee_required(view):
     @wraps(view)
     def wrapper(request, *args, **kwargs):
-        request.employee, request.kiosk_mode = _resolve(request)
+        lab = LabSettings.load()
+        request.employee, request.kiosk_mode = _resolve(request, lab)
         if request.employee is None:
             if request.user.is_authenticated and current_device(request) is None:
+                if not lab.personal_allowed:
+                    return not_available(request, USE_TABLET)
                 # Signed in (e.g. as an admin) but not an employee: kiosk:start would send
                 # them straight back here, an endless redirect loop.
                 return render(request, "kiosk/not_linked.html", status=403)

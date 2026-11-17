@@ -1,0 +1,11 @@
+{% extends "kiosk/base.html" %}
+{% block content %}
+<h1>Not available here</h1>
+<p>{{ message }}</p>
+{% if request.user.is_authenticated %}
+<form method="post" action="{% url 'kiosk:sign_out' %}">
+  {% csrf_token %}
+  <button type="submit">Sign out</button>
+</form>
+{% endif %}
+{% endblock %}

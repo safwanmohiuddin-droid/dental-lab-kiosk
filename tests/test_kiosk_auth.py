@@ -226,7 +226,7 @@ def test_user_without_employee_cannot_use_kiosk(client, staff):
     assert client.get("/k/home/").status_code == 403  # was a redirect to /k/, half of a loop
 
 
-def test_anonymous_phone_is_sent_to_login(client):
+def test_anonymous_phone_is_sent_to_login(client, db):
     assert client.get("/k/").url == "/accounts/login/"
 
 

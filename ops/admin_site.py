@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.admin import AdminSite
+from django.urls import reverse
 from django_otp import devices_for_user
 from django_otp.admin import OTPAdminAuthenticationForm, OTPAdminSite
 
@@ -29,6 +30,78 @@ class KioskAdminSite(OTPAdminSite):
     @property
     def login_template(self):
         return OTPAdminSite.login_template if settings.ADMIN_REQUIRE_2FA else None
+
+    site_header = "Material kiosk"
+    site_title = "Material kiosk"
+    index_title = "Lab setup and stock"
+    index_template = "admin/kiosk_index.html"
+
+    def index(self, request, extra_context=None):
+        from inventory.models import Department, Employee, ImportBatch
+        from kiosk.models import Device, LabSettings
+
+        lab = LabSettings.load()
+
+        def url(name):
+            return reverse(f"admin:{name}")
+
+        steps = [
+            (
+                "How people sign in",
+                1,
+                url("kiosk_labsettings_changelist"),
+                f"Now: {lab.get_sign_in_display()}. Change it in Lab settings.",
+            ),
+            (
+                "Departments",
+                Department.objects.filter(active=True).count(),
+                url("inventory_department_changelist"),
+                "Add each department, one by one or from a spreadsheet (Import).",
+            ),
+            (
+                "Employees",
+                Employee.objects.filter(active=True).count(),
+                url("inventory_employee_changelist"),
+                "Add people one by one, or Import a list from a spreadsheet.",
+            ),
+            (
+                "Materials and stock",
+                ImportBatch.objects.filter(status="committed").count(),
+                url("inventory_importbatch_add"),
+                "Upload your stock as an Excel delivery; new barcodes become materials.",
+            ),
+        ]
+        if lab.shared_allowed:
+            steps += [
+                (
+                    "PINs for the shared tablet",
+                    Employee.objects.filter(active=True).exclude(pin_hash="").count(),
+                    url("inventory_employee_changelist"),
+                    "Open each employee and set a 4 to 6 digit PIN.",
+                ),
+                (
+                    "Store-room tablet",
+                    Device.objects.filter(active=True, registered_at__isnull=False).count(),
+                    url("kiosk_device_add"),
+                    "Add a tablet and open the link it shows on the tablet's browser.",
+                ),
+            ]
+        if lab.personal_allowed:
+            steps.append(
+                (
+                    "Personal phone logins",
+                    Employee.objects.filter(active=True, user__isnull=False).count(),
+                    url("auth_user_add"),
+                    "Create a login for each person, then link it on their employee page.",
+                )
+            )
+        setup = [{"title": t, "done": n > 0, "url": u, "help": h} for t, n, u, h in steps]
+        extra_context = {
+            **(extra_context or {}),
+            "setup": setup,
+            "setup_done": all(s["done"] for s in setup),
+        }
+        return super().index(request, extra_context)
 
     def has_permission(self, request):
         if settings.ADMIN_REQUIRE_2FA:

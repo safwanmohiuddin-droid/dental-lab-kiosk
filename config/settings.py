@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "django_otp",
     "django_otp.plugins.otp_totp",
     "ops",
+    "import_export",
 ]
 
 # Phase 4: Argon2 first (ADR 0009); PINs and passwords use it, older hashes still verify.
@@ -125,3 +126,8 @@ LOGGING = {
     },
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
 }
+
+# Master data import/export: Excel, CSV, and TSV (what pasting from a spreadsheet produces).
+from import_export.formats.base_formats import CSV, TSV, XLSX  # noqa: E402
+
+IMPORT_EXPORT_FORMATS = [XLSX, CSV, TSV]

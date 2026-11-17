@@ -1,0 +1,31 @@
+{% extends "admin/import_export/import.html" %}
+
+{% block import_form_additional_info %}
+<p>Upload an Excel or CSV file, <strong>or</strong> copy the cells from Excel or Google Sheets
+(including the header row) and paste them below. You'll see a preview before anything is saved.</p>
+<div class="form-row">
+  <label for="paste-rows">Paste rows</label>
+  <textarea id="paste-rows" rows="8" style="width: 100%; font-family: monospace;"
+            placeholder="name&#9;department&#10;Aisha Rahman&#9;CAD/CAM"></textarea>
+</div>
+<script>
+  // Pasted spreadsheet cells are tab-separated: hand them to the normal import as a .tsv file,
+  // so pasting gets the same validation and preview as an uploaded file.
+  (() => {
+    const box = document.getElementById("paste-rows");
+    const form = box.closest("form");
+    box.addEventListener("input", () => {
+      const fileInput = form.querySelector("input[name=import_file]");
+      const transfer = new DataTransfer();
+      if (box.value.trim()) {
+        transfer.items.add(new File([box.value.trim() + "\n"], "pasted.tsv", { type: "text/tab-separated-values" }));
+        const format = form.querySelector("select[name=format]");
+        for (const option of format ? format.options : []) {
+          if (option.text.toLowerCase() === "tsv") format.value = option.value;
+        }
+      }
+      fileInput.files = transfer.files;
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,21 +1,76 @@
 from django import forms
 from django.contrib import admin, messages
+from django.db.models import ProtectedError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
+from import_export.admin import ImportExportModelAdmin
 
-from . import excel_import
+from . import excel_import, services
 from .models import Department, Employee, ImportBatch, Material, StockMove
+from .resources import DepartmentResource, EmployeeResource, MaterialResource
 from .services import StockError
 
 
+class MasterDataAdmin(ImportExportModelAdmin):
+    """Import/export (Excel, CSV, pasted rows) and delete-or-archive for master data.
+
+    Anything with stock history can't be deleted without rewriting past reports (ADR 0004), so
+    "Delete or archive" deletes what has no history and archives the rest.
+    """
+
+    import_template_name = "admin/inventory/import_with_paste.html"
+    actions = ["delete_or_archive", "restore"]
+
+    def has_history(self, obj):
+        raise NotImplementedError
+
+    def has_delete_permission(self, request, obj=None):
+        allowed = super().has_delete_permission(request, obj)
+        return allowed and (obj is None or not self.has_history(obj))
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)  # replaced by delete_or_archive
+        return actions
+
+    @admin.action(description="Delete selected (archive the ones with history)")
+    def delete_or_archive(self, request, queryset):
+        deleted = archived = 0
+        for obj in queryset:
+            if not self.has_history(obj):
+                try:
+                    obj.delete()
+                    deleted += 1
+                    continue
+                except ProtectedError:
+                    pass  # still referenced (for example a department with employees)
+            if obj.active:
+                obj.active = False
+                obj.save(update_fields=["active"])
+            archived += 1
+        messages.success(
+            request,
+            f"Deleted {deleted}. Archived {archived} that have history or are still in use "
+            "(hidden from the kiosk, kept in reports).",
+        )
+
+    @admin.action(description="Restore selected (un-archive)")
+    def restore(self, request, queryset):
+        messages.success(request, f"Restored {queryset.update(active=True)}.")
+
+
 @admin.register(Department)
-class DepartmentAdmin(admin.ModelAdmin):
+class DepartmentAdmin(MasterDataAdmin):
+    resource_classes = [DepartmentResource]
     list_display = ["name", "active"]
     list_filter = ["active"]
     search_fields = ["name"]
+
+    def has_history(self, obj):
+        return StockMove.objects.filter(department=obj).exists()
 
 
 class EmployeeForm(forms.ModelForm):
@@ -41,13 +96,17 @@ class EmployeeForm(forms.ModelForm):
 
 
 @admin.register(Employee)
-class EmployeeAdmin(admin.ModelAdmin):
+class EmployeeAdmin(MasterDataAdmin):
+    resource_classes = [EmployeeResource]
     form = EmployeeForm
     list_display = ["name", "department", "user", "has_pin", "pin_locked_until", "active"]
     list_filter = ["department", "active"]
     search_fields = ["name"]
     autocomplete_fields = ["user"]
-    actions = ["unlock_pin"]
+    actions = [*MasterDataAdmin.actions, "unlock_pin"]
+
+    def has_history(self, obj):
+        return StockMove.objects.filter(employee=obj).exists()
 
     @admin.display(boolean=True, description="PIN set")
     def has_pin(self, obj):
@@ -59,23 +118,96 @@ class EmployeeAdmin(admin.ModelAdmin):
         messages.success(request, f"Unlocked {count} employee(s).")
 
 
+class CountForm(forms.Form):
+    counted = forms.DecimalField(
+        label="Counted on the shelf", max_digits=12, decimal_places=3, min_value=0
+    )
+    note = forms.CharField(label="Reason", max_length=200, initial="Stock count")
+
+
 @admin.register(Material)
-class MaterialAdmin(admin.ModelAdmin):
-    list_display = ["name", "barcode", "category", "unit", "qty_on_hand", "avg_cost", "active"]
+class MaterialAdmin(MasterDataAdmin):
+    resource_classes = [MaterialResource]
+    list_display = ["name", "barcode", "category", "unit", "stock", "avg_cost", "active"]
     list_filter = ["category", "active"]
     search_fields = ["name", "barcode"]
-    readonly_fields = ["qty_on_hand", "avg_cost"]  # changed only through stock moves
+    readonly_fields = ["stock", "avg_cost"]  # changed only through stock moves
+
+    def has_history(self, obj):
+        return obj.moves.exists()
+
+    @admin.display(description="In stock", ordering="qty_on_hand")
+    def stock(self, obj):
+        if obj.pk is None:
+            return "0 (add stock with a stock import)"
+        url = reverse("admin:inventory_material_count", args=[obj.pk])
+        return format_html(
+            '{} {} &nbsp;<a href="{}">Correct count</a>',
+            services.plain(obj.qty_on_hand),
+            obj.unit,
+            url,
+        )
+
+    def get_urls(self):
+        view = self.admin_site.admin_view
+        return [
+            path("<int:pk>/count/", view(self.count_view), name="inventory_material_count"),
+            *super().get_urls(),
+        ]
+
+    def count_view(self, request, pk):
+        if not self.has_change_permission(request):
+            return HttpResponse(status=403)
+        material = get_object_or_404(Material, pk=pk)
+        form = CountForm(request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            try:
+                move = services.count(
+                    material,
+                    form.cleaned_data["counted"],
+                    note=form.cleaned_data["note"],
+                    user=request.user,
+                )
+            except StockError as error:
+                form.add_error("counted", str(error))
+            else:
+                if move is None:
+                    messages.info(request, "The count matches the system. Nothing changed.")
+                else:
+                    messages.success(
+                        request, f"Stock corrected by {services.plain(move.qty)} {material.unit}."
+                    )
+                return redirect("admin:inventory_material_changelist")
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "title": f"Correct stock count: {material.name}",
+            "material": material,
+            "on_hand": services.plain(material.qty_on_hand),
+            "form": form,
+        }
+        return TemplateResponse(request, "admin/inventory/material/count.html", context)
 
 
 @admin.register(StockMove)
 class StockMoveAdmin(admin.ModelAdmin):
-    """Read-only: moves are written by the stock services (Phase 2), never edited by hand."""
+    """Read-only: moves are written by the stock services, never edited. Mistakes get an Undo."""
 
-    list_display = ["created_at", "kind", "material", "qty", "unit_cost", "department", "employee"]
+    list_display = [
+        "created_at",
+        "kind",
+        "material",
+        "qty",
+        "unit_cost",
+        "department",
+        "employee",
+        "note",
+    ]
     list_filter = ["kind", "department", "flagged"]
     search_fields = ["material__name", "material__barcode", "employee__name", "case_ref"]
     date_hierarchy = "created_at"
     list_select_related = ["material", "department", "employee"]
+    actions = ["undo"]
 
     def has_add_permission(self, request):
         return False
@@ -85,6 +217,16 @@ class StockMoveAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    @admin.action(description="Undo selected movements (adds a correcting movement)")
+    def undo(self, request, queryset):
+        for move in queryset:
+            try:
+                services.undo(move, user=request.user)
+            except StockError as error:
+                messages.error(request, f"Movement #{move.pk}: {error}")
+            else:
+                messages.success(request, f"Movement #{move.pk} undone.")
 
 
 class UploadForm(forms.Form):

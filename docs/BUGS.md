@@ -2,6 +2,34 @@
 
 Every real bug, newest first. Write the failing test before the fix.
 
+### 2026-11-17: The 14-day return limit could be bypassed
+- **Symptom:** found when the owner asked "can users return something later?": a hand-made POST could return an issue from months ago.
+- **Root cause:** the limit lived in the query for the on-screen list; the return action looked the issue up with a different query that only checked ownership.
+- **Fix:** the action uses the same `_returnable()` query as the list.
+- **Test:** `test_old_issue_cannot_be_returned_by_posting_directly` (failed before the fix).
+- **Lesson:** "When a rule appears in two queries, one day they disagree. Make the action use the list's query."
+
+### 2026-11-17: Owner feedback: the admin was a developer's tool
+- **Symptom:** one-by-one data entry, hard deletes blocked by a confusing "no permission to delete stock move" page, no idea where to start.
+- **Root cause:** the admin was built to protect the ledger, not to be used by an owner on day one.
+- **Fix:** spreadsheet import/export with paste, delete-or-archive, undo, stock count, setup checklist, sign-in mode (ADR 0035).
+- **Test:** `tests/test_admin_tools.py`; every screen tried in a browser.
+- **Lesson:** "Correct is not the same as usable. Real users find the second kind of bug."
+
+### 2026-11-17: I assumed import previews might write to the database
+- **Symptom:** I set `IMPORT_EXPORT_USE_TRANSACTIONS = True` to stop previews creating departments, then a mutation check (setting it to False) still passed.
+- **Root cause:** django-import-export always wraps a dry run in a rolled-back transaction (`use_transactions or dry_run`). My setting changed nothing.
+- **Fix:** removed the setting; kept a test that previews create nothing, as a guard against a future library change.
+- **Test:** `test_import_preview_creates_nothing`.
+- **Lesson:** "A mutation check that can't fail tells you the code you added does nothing. Read the library before adding a guard."
+
+### 2026-11-17: The setup checklist squeezed into one letter per line on a phone
+- **Symptom:** "How people sign in" rendered as H / o / w down the page at 335 px wide.
+- **Root cause:** a three-column table in a narrow viewport.
+- **Fix:** a plain list that wraps.
+- **Test:** checked at 375 px: no horizontal scroll.
+- **Lesson:** "Tables are for comparing rows, not for laying out instructions."
+
 ### 2026-11-17: Backups were readable and lived on the same disk
 - **Symptom:** found in a security review after v0.1.0, prompted by a post warning that generated apps skip secrets and backup hygiene.
 - **Root cause:** `backup.sh` wrote plain `pg_dump` files next to the database. A dead disk loses both; a stolen server exposes every backup.

@@ -1,6 +1,6 @@
 # 0009. Shared device + PIN, and personal login
 
-- Status: Accepted (owner, 2026-11-16)
+- Status: Accepted (owner, 2026-11-16), amended by [0035](0035-sign-in-mode-and-owner-tools.md) (labs choose which paths are on)
 - Date: 2026-11-16
 
 ## Context
