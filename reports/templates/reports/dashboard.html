@@ -1,20 +1,22 @@
 {% extends "reports/base.html" %}
-{% block heading %}Material consumption{% endblock %}
+{% block heading %}What the lab used{% endblock %}
 {% block content %}
-<p>
-  <strong>{{ totals.net_qty|floatformat:"-3g" }}</strong> net units in <strong>{{ totals.issues }}</strong> issues,
-  cost <strong>{% if totals.net_cost is None %}unknown{% else %}{{ totals.net_cost|floatformat:"2g" }}{% endif %}</strong>
-  {% if totals.coverage is not None %}<span class="{% if totals.coverage < 100 %}warn{% endif %}">({{ totals.coverage }}% of issues have a price)</span>{% endif %}
-</p>
+{% if top_department %}
+<p class="headline"><strong>{{ top_department.department__name }}</strong> used the most:
+  {{ top_department.net_qty|floatformat:"-3g" }} items{% if top_department.net_cost is not None %}, {{ top_department.net_cost|floatformat:"2g" }} in cost{% endif %}.</p>
+{% else %}
+<p class="headline">Nothing was taken in this period.</p>
+{% endif %}
+<p class="muted">{{ totals.net_qty|floatformat:"-3g" }} used in {{ totals.issues }} takes{% if totals.net_cost is not None %}, {{ totals.net_cost|floatformat:"2g" }} in cost{% endif %}{% if totals.coverage is not None and totals.coverage < 100 %}. <span class="warning" style="padding:.1rem .4rem">Only {{ totals.coverage }}% of takes have a price</span>{% endif %}.</p>
 
 <h2>By department</h2>
 <div class="table"><table>
-  <thead><tr><th>Department</th><th class="num">Net qty</th><th class="num">Cost</th><th class="num">Issues</th><th class="num">Priced</th><th></th></tr></thead>
+  <thead><tr><th>Department</th><th class="num">Used</th><th class="num">Cost</th><th class="num">Times taken</th><th class="num">Has a price</th><th></th></tr></thead>
   <tbody>
   {% for r in departments %}
     <tr><td>{{ r.department__name }}</td>{% include "reports/_cells.html" %}</tr>
   {% empty %}
-    <tr><td colspan="6" class="muted">No issues in this period.</td></tr>
+    <tr><td colspan="6" class="muted">Nothing was taken in this period.</td></tr>
   {% endfor %}
   </tbody>
 </table></div>

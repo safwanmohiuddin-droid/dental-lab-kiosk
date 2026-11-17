@@ -1,6 +1,6 @@
 # 0030. Plain CSS and a boosted htmx kiosk
 
-- Status: Accepted (owner, 2026-11-17)
+- Status: Accepted, amended by [0036](0036-ux-rules-and-one-look.md) (one shared stylesheet) (owner, 2026-11-17)
 - Date: 2026-11-17
 - Amends: [0002](0002-django-htmx-monolith.md) (drops the Tailwind standalone CLI)
 

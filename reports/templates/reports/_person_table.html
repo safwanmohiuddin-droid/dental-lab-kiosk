@@ -1,10 +1,10 @@
 <div class="table"><table>
-  <thead><tr><th>Employee</th><th>Department</th><th class="num">Net qty</th><th class="num">Cost</th><th class="num">Issues</th><th class="num">Priced</th><th></th></tr></thead>
+  <thead><tr><th>Employee</th><th>Department</th><th class="num">Used</th><th class="num">Cost</th><th class="num">Times taken</th><th class="num">Has a price</th><th></th></tr></thead>
   <tbody>
   {% for r in rows %}
     <tr><td>{{ r.employee__name }}</td><td>{{ r.department__name }}</td>{% include "reports/_cells.html" %}</tr>
   {% empty %}
-    <tr><td colspan="7" class="muted">No issues in this period.</td></tr>
+    <tr><td colspan="7" class="muted">Nothing was taken in this period.</td></tr>
   {% endfor %}
   </tbody>
 </table></div>

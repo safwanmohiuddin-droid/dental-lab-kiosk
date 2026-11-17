@@ -1,0 +1,33 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+{# Same look as the kiosk and reports (docs/ux-rules.md R4): admin colours mapped to ui.css. #}
+<style>
+  :root, html[data-theme="light"], html[data-theme="dark"] {
+    --primary: #1b2340; --secondary: #1b2340; --header-bg: #1b2340; --header-color: #f6f3ee;
+    --header-link-color: #f6f3ee; --breadcrumbs-bg: #2b3355; --accent: #f0997b;
+    --button-bg: #1b2340; --button-hover-bg: #2b3355; --default-button-bg: #c2452d;
+    --default-button-hover-bg: #a8391f; --delete-button-bg: #a32d2d;
+  }
+  html:not([data-theme="dark"]) body { background: #f6f3ee; }
+  #site-name a { font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif; font-size: 1.4rem; }
+  .actions .action-buttons { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-right: 12px; }
+  .actions button.button { min-height: 36px; padding: 6px 14px; border-radius: 999px; }
+  .actions button.danger { background: #a32d2d; }
+  .object-tools a, .submit-row input, .submit-row a.button { border-radius: 999px !important; }
+</style>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block nav-global %}
+{% if user.is_staff %}<a href="{% url 'reports:dashboard' %}" style="color: var(--header-link-color); margin-right: 1rem;">Reports</a>{% endif %}
+{% endblock %}

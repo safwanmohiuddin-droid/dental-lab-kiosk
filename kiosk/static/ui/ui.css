@@ -1,0 +1,119 @@
+/* One look for kiosk, reports and admin (docs/ux-rules.md, R4). Change the look here only. */
+:root {
+  --paper: #f6f3ee;      /* page */
+  --card: #ffffff;
+  --ink: #1b2340;        /* text and main buttons */
+  --ink-soft: #565d75;   /* secondary text */
+  --line: #e2dcd2;
+  --accent: #c2452d;     /* the one thing that matters (R12) */
+  --ok: #0f6e56;
+  --ok-bg: #e1f5ee;
+  --warn: #854f0b;
+  --warn-bg: #faeeda;
+  --danger: #a32d2d;
+  --danger-bg: #fcebeb;
+  --radius: 14px;
+  --tap: 52px;           /* R11: comfortable thumb target, above WCAG's 44 px */
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #12162a; --card: #1b2038; --ink: #f2eee8; --ink-soft: #a9adbd; --line: #2d3352;
+    --accent: #f0997b; --ok: #5dcaa5; --ok-bg: #0c3a2e; --warn: #fac775; --warn-bg: #3d2a09;
+    --danger: #f09595; --danger-bg: #4a1717;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.45 var(--sans); }
+main { max-width: 34rem; margin: 0 auto; padding: 1rem 1rem 2rem; }
+main.wide { max-width: 64rem; }
+h1 { font: 400 2rem/1.1 var(--serif); margin: .75rem 0 1rem; }
+h2 { font-size: 1rem; font-weight: 600; color: var(--ink-soft); margin: 1.75rem 0 .5rem; }
+a { color: var(--ink); }
+.muted { color: var(--ink-soft); font-size: .92rem; }
+.stroke { width: 40px; height: 3px; background: var(--accent); border: 0; margin: .5rem 0 1rem; }
+
+/* Header bar: who is signed in, and the way out (R3). */
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+       padding: .5rem 1rem; border-bottom: 1px solid var(--line); background: var(--card); }
+.bar .who { display: flex; flex-direction: column; line-height: 1.2; }
+
+/* Controls (R11). */
+input, select, button, .button { font: inherit; }
+input, select { width: 100%; min-height: var(--tap); padding: .6rem .9rem; border: 1px solid var(--line);
+                border-radius: var(--radius); background: var(--card); color: var(--ink); font-size: 18px; }
+input:focus-visible, select:focus-visible, button:focus-visible, .button:focus-visible, a:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px; }
+label { display: block; font-size: .92rem; color: var(--ink-soft); margin: .9rem 0 .35rem; }
+button, .button { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%;
+                  min-height: var(--tap); padding: .7rem 1.2rem; margin: .5rem 0; border-radius: 999px;
+                  border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+                  font-weight: 600; text-decoration: none; cursor: pointer; }
+.secondary { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+button.link { width: auto; min-height: 44px; margin: 0; padding: 0 .75rem; border: 0;
+              background: none; color: var(--ink); font-weight: 500; text-decoration: underline; }
+button[aria-busy="true"] { opacity: .65; pointer-events: none; }   /* R1: visibly working */
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+        padding: 1rem 1.1rem; margin: 1rem 0; }
+.error, .warning, .ok { border-radius: var(--radius); padding: .8rem 1rem; margin: .75rem 0; }
+.error { background: var(--danger-bg); color: var(--danger); }
+.warning { background: var(--warn-bg); color: var(--warn); }
+.ok { background: var(--ok-bg); color: var(--ok); }
+ul.plain { list-style: none; margin: 0; padding: 0; }
+
+/* Quantity stepper: big number, big minus and plus (R5, R12). */
+.stepper { display: grid; grid-template-columns: var(--tap) 1fr var(--tap); align-items: center;
+           gap: .5rem; margin: .5rem 0; }
+.stepper button { margin: 0; padding: 0; border-radius: 50%; width: var(--tap); font-size: 1.6rem;
+                  background: transparent; color: var(--ink); border-color: var(--line); }
+.stepper input { text-align: center; font: 400 3.2rem/1 var(--serif); border: 0; background: none;
+                 min-height: 4rem; padding: 0; }
+
+/* Lists of tappable rows: people, usual items, returns. */
+.rows a, .rows button.row { display: flex; justify-content: space-between; align-items: center; width: 100%;
+  min-height: var(--tap); padding: .7rem 1rem; margin: 0 0 .5rem; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--card); color: var(--ink); text-decoration: none;
+  font-weight: 500; }
+
+/* PIN pad: like a phone lock screen (Jakob's law, R11). */
+.dots { display: flex; justify-content: center; gap: .8rem; min-height: 1.5rem; margin: 1rem 0; }
+.dots span { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ink); }
+.dots span.on { background: var(--ink); }
+.pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; max-width: 20rem; margin: 0 auto; }
+.pad button { margin: 0; min-height: 4.2rem; border-radius: 50%; aspect-ratio: 1; width: 100%;
+              font: 400 1.8rem var(--serif); background: var(--card); color: var(--ink); border-color: var(--line); }
+.pad button.ghost { background: none; border: 0; font: 600 1rem var(--sans); }
+
+/* Done screen with a visible countdown (R1). */
+.done-big { font: 400 4.5rem/1 var(--serif); margin: .25rem 0; }
+.countdown { position: relative; overflow: hidden; }
+.countdown::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%;
+                    background: var(--accent); animation: drain 5s linear forwards; }
+@keyframes drain { to { width: 0; } }
+
+/* Search over a list (R8, Hick's law). */
+.search { position: sticky; top: 0; background: var(--paper); padding: .5rem 0; z-index: 1; }
+
+/* Tables for reports. */
+.table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+th, td { padding: .6rem .5rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+th { color: var(--ink-soft); font-weight: 500; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.bar { width: 35%; min-width: 80px; }
+.bar span { display: block; height: 10px; background: var(--ink); border-radius: 5px; }
+.headline { font: 400 1.6rem/1.25 var(--serif); margin: .5rem 0 1rem; }
+.headline strong { color: var(--accent); font-weight: 400; }
+.pills { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
+.pills a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 999px;
+           border: 1px solid var(--line); text-decoration: none; color: var(--ink); background: var(--card); }
+.pills a[aria-current="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+nav.tabs { display: flex; gap: 1.25rem; padding: .25rem 0; }
+nav.tabs a { text-decoration: none; padding: .5rem 0; min-height: 44px; display: inline-flex; align-items: center; }
+nav.tabs a[aria-current="page"] { border-bottom: 3px solid var(--accent); font-weight: 600; }
+details summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--ink-soft); }
+.scanrow { display: grid; grid-template-columns: 1fr auto; gap: .5rem; align-items: center; }
+.scanrow button { width: auto; margin: 0; padding: 0 1.2rem; }

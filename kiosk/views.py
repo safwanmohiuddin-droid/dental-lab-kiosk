@@ -1,19 +1,20 @@
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+from statistics import median
 
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.views import LoginView
 from django.db import transaction
-from django.db.models import DecimalField, F, Sum, Value
+from django.db.models import DecimalField, F, Max, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from inventory import services
-from inventory.models import Department, Employee, Material, StockMove
+from inventory.models import Employee, Material, StockMove
 
 from . import auth
 from .models import Device, LabSettings, hash_token
@@ -28,13 +29,16 @@ def start(request):
         if not lab.personal_allowed:
             return auth.not_available(request, auth.USE_TABLET)
         return redirect("kiosk:home") if request.user.is_authenticated else redirect("login")
-    departments = (
-        Department.objects.filter(active=True, employees__active=True)
-        .distinct()
-        .prefetch_related("employees")
+    # Recent people first, then everyone A to Z, with a search box (R8, Hick's law).
+    people = list(
+        Employee.objects.filter(active=True, department__active=True)
+        .exclude(pin_hash="")
+        .select_related("department")
+        .annotate(last_taken=Max("stockmove__created_at"))
+        .order_by("name")
     )
-    groups = [(d, [e for e in d.employees.all() if e.active and e.pin_hash]) for d in departments]
-    return render(request, "kiosk/start.html", {"groups": [g for g in groups if g[1]]})
+    recent = sorted((p for p in people if p.last_taken), key=lambda p: p.last_taken, reverse=True)
+    return render(request, "kiosk/start.html", {"people": people, "recent": recent[:6]})
 
 
 def pin(request, employee_id):
@@ -71,8 +75,21 @@ class IssueForm(forms.Form):
     case_ref = forms.CharField(label="Case number (optional)", max_length=50, required=False)
 
 
-class ConfirmIssueForm(IssueForm):
+class TakeForm(IssueForm):
     key = forms.UUIDField(widget=forms.HiddenInput)
+    confirmed = forms.BooleanField(required=False, widget=forms.HiddenInput)
+
+
+UNUSUAL_FACTOR = 3  # ask again when someone takes more than 3x what they usually take
+
+
+def _usual_qty(employee, material):
+    """Median of this person's last 10 takes of this material, or None with fewer than 3."""
+    taken = StockMove.objects.filter(
+        employee=employee, material=material, kind=StockMove.Kind.ISSUE
+    ).order_by("-created_at")
+    qtys = [-q for q in taken.values_list("qty", flat=True)[:10]]
+    return median(qtys) if len(qtys) >= 3 else None
 
 
 class ReturnForm(forms.Form):
@@ -155,32 +172,23 @@ def home(request):
         return _home(request, barcode=barcode, error=f"No material with barcode {barcode}.")
     if not material.active:
         return _home(request, barcode=barcode, error=f"{material.name} is archived.")
-    form = IssueForm(initial={"material": material, "qty": request.GET.get("qty")})
+    qty = request.GET.get("qty") or "1"
+    form = TakeForm(initial={"material": material, "qty": qty, "key": uuid.uuid4()})
     return _home(request, barcode=barcode, material=material, form=form)
-
-
-@auth.employee_required
-def confirm(request):
-    """Check the request before anything changes. GET: it only shows what will happen."""
-    form = IssueForm(request.GET)
-    if not form.is_valid():
-        return _home_for(request, request.GET.get("material"), form)
-    material, qty = form.cleaned_data["material"], form.cleaned_data["qty"]
-    if qty > material.qty_on_hand:
-        on_hand = services.plain(material.qty_on_hand)
-        form.add_error("qty", f"Only {on_hand} {material.unit} in stock.")
-        return _home(request, barcode=material.barcode, material=material, form=form)
-    confirm_form = ConfirmIssueForm(initial={**form.cleaned_data, "key": uuid.uuid4()})
-    return render(request, "kiosk/confirm.html", {"form": confirm_form, **form.cleaned_data})
 
 
 @require_POST
 @auth.employee_required
 def issue(request):
-    form = ConfirmIssueForm(request.POST)
+    """Take stock in one step. Only an unusually large amount asks again (R5, R8)."""
+    form = TakeForm(request.POST)
     if not form.is_valid():
         return _home_for(request, request.POST.get("material"), form)
     data = form.cleaned_data
+    usual = _usual_qty(request.employee, data["material"])
+    if usual and data["qty"] > usual * UNUSUAL_FACTOR and not data["confirmed"]:
+        context = {"form": form, "usual": services.plain(usual), **data}
+        return render(request, "kiosk/confirm.html", context)
     try:
         move = services.issue(
             data["material"],
@@ -191,7 +199,8 @@ def issue(request):
             user=request.user if request.user.is_authenticated else None,
         )
     except services.StockError as error:
-        return _home_for(request, data["material"].pk, IssueForm(initial=data), str(error))
+        retry = TakeForm(initial={**data, "key": uuid.uuid4(), "confirmed": False})
+        return _home_for(request, data["material"].pk, retry, str(error))
     return _finish(request, "issue", move)
 
 

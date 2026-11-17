@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Redesign by published UX rules** (docs/ux-rules.md): one look across kiosk, reports and
+  admin; name search and recent people on the tablet; an on-screen PIN pad; take in one step
+  with a big stepper, with a second look only for unusually large amounts; "Saving..." feedback;
+  reports in plain words with quick periods and a headline; admin actions as visible buttons.
 - **Lab settings**: choose how people sign in: shared tablet only, personal phones only, or both.
 - **Spreadsheets**: import and export departments, employees and materials (Excel, CSV, or paste
   cells straight from Excel or Google Sheets), always with a preview first.

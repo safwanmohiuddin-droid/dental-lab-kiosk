@@ -1,25 +1,26 @@
 {% extends "kiosk/base.html" %}
 {% block title %}Return{% endblock %}
 {% block content %}
-<h1>Return to stock</h1>
-<p class="muted">Your issues from the last 14 days.</p>
+<a href="{% url 'kiosk:home' %}" class="muted">&larr; Back</a>
+<h1>Return to the shelf</h1>
+<p class="muted">What you took in the last 14 days.</p>
 {% for move in moves %}
 <form class="card" method="post" action="{% url 'kiosk:return_move' move.pk %}">
   {% csrf_token %}
-  <dl>
-    <dt>Material</dt><dd>{{ move.material.name }}</dd>
-    <dt>Taken</dt><dd>{{ move.created_at|date:"j M, H:i" }}{% if move.case_ref %} · case {{ move.case_ref }}{% endif %}</dd>
-    <dt>Can return</dt><dd>{{ move.left.normalize }} {{ move.material.unit }}</dd>
-  </dl>
+  <p><strong>{{ move.material.name }}</strong><br>
+  <span class="muted">{{ move.created_at|date:"j M, H:i" }}{% if move.case_ref %} &middot; case {{ move.case_ref }}{% endif %} &middot; up to {{ move.left.normalize }} {{ move.material.unit }}</span></p>
   {% if error and error_move == move.pk %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-  <label for="qty-{{ move.pk }}">Quantity to return</label>
-  <input id="qty-{{ move.pk }}" name="qty" inputmode="decimal" autocomplete="off"
-         value="{{ move.left.normalize }}" required>
+  <label for="qty-{{ move.pk }}">How many are you returning</label>
+  <div class="stepper">
+    <button type="button" data-step="-1" aria-label="One less">&minus;</button>
+    <input id="qty-{{ move.pk }}" name="qty" inputmode="decimal" autocomplete="off" required data-qty
+           value="{{ move.left.normalize }}">
+    <button type="button" data-step="1" aria-label="One more">+</button>
+  </div>
   <input type="hidden" name="key" value="{{ move.key }}" data-client-key>
-  <button type="submit">Return</button>
+  <button type="submit">Return <span data-qty-label>{{ move.left.normalize }}</span>&nbsp;{{ move.material.unit }}</button>
 </form>
 {% empty %}
-<p>Nothing to return from the last 14 days.</p>
+<div class="card"><p>Nothing to return from the last 14 days.</p></div>
 {% endfor %}
-<a class="button secondary" href="{% url 'kiosk:home' %}">Back</a>
 {% endblock %}

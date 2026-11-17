@@ -103,6 +103,16 @@ class KioskAdminSite(OTPAdminSite):
         }
         return super().index(request, extra_context)
 
+    # Developer sections (logins, two-factor devices) go last under one plain name (R2, R8).
+    ADVANCED = {"auth": "Advanced: logins and groups", "otp_totp": "Advanced: two-factor apps"}
+
+    def get_app_list(self, request, app_label=None):
+        apps = super().get_app_list(request, app_label)
+        for app in apps:
+            if app["app_label"] in self.ADVANCED:
+                app["name"] = self.ADVANCED[app["app_label"]]
+        return sorted(apps, key=lambda app: app["app_label"] in self.ADVANCED)
+
     def has_permission(self, request):
         if settings.ADMIN_REQUIRE_2FA:
             return super().has_permission(request)
