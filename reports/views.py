@@ -1,5 +1,3 @@
-import csv
-import io
 from datetime import timedelta
 from functools import wraps
 
@@ -7,17 +5,13 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.decorators import permission_required
 from django.contrib.auth.views import redirect_to_login
-from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from openpyxl import Workbook
 
 from inventory.models import Department, Employee, Material
 
-from . import engine
-
-XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+from . import engine, export
 
 
 def staff_report(view):
@@ -120,42 +114,16 @@ def _spec(request):
     return form, spec, error
 
 
-def _export(report, fmt):
-    header = [c or "" for c in report.columns]
-    body = [
-        [r["label"], *r["values"]] + ([r["total"]] if len(r["values"]) > 1 else [])
-        for r in report.rows
-    ]
-    if not report.spec.by and not report.spec.every:
-        body = [[report.measure_label, report.total]]
-        header = ["", report.measure_label]
-    name = f"report-{report.spec.start}-{report.spec.end}"
-    if fmt == "csv":
-        out = io.StringIO()
-        writer = csv.writer(out)
-        writer.writerows([header, *body])
-        response = HttpResponse(out.getvalue(), content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="{name}.csv"'
-        return response
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Report"
-    for row in [header, *body]:
-        ws.append(row)
-    data = io.BytesIO()
-    wb.save(data)
-    response = HttpResponse(data.getvalue(), content_type=XLSX)
-    response["Content-Disposition"] = f'attachment; filename="{name}.xlsx"'
-    return response
-
-
 @staff_report
 def builder(request):
     form, spec, error = _spec(request)
     report = engine.run(spec)
     fmt = request.GET.get("format")
-    if fmt in ("csv", "xlsx"):
-        return _export(report, fmt)
+    name = f"report-{spec.start}-{spec.end}"
+    if fmt == "csv":
+        return export.csv_response(report, name)
+    if fmt == "xlsx":
+        return export.xlsx_response(report, name, request.user)
     leader = report.rows[0] if spec.by and report.rows else None
     query = request.GET.copy()
     query.pop("format", None)
@@ -168,6 +136,8 @@ def builder(request):
             "error": error,
             "leader": leader,
             "query": query.urlencode(),
+            "title": export.title(spec),
+            "filters": export.filters(spec),
         },
     )
 

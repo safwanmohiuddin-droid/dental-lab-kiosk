@@ -28,6 +28,7 @@
 </form>
 
 <section id="report" class="report" aria-live="polite">
+  <div class="print-only"><h2>{{ title }}</h2><p>Filters: {{ filters }}</p></div>
   {% if error %}<p class="error" role="alert">{{ error }} Showing the default report.</p>{% endif %}
   <p class="muted">{{ report.spec.start|date:"j M Y" }} to {{ report.spec.end|date:"j M Y" }}</p>
 
@@ -61,9 +62,13 @@
   <div class="card"><p>Nothing was taken in this period. Try a longer period or fewer filters.</p></div>
   {% endif %}
 
-  <p class="muted">Download this report:
-    <a href="?{{ query }}&amp;format=xlsx" hx-boost="false">Excel</a> &middot;
-    <a href="?{{ query }}&amp;format=csv" hx-boost="false">CSV</a>.
-    The page address is this report: bookmark or share it.</p>
+  <div class="downloads">
+    <a class="button secondary" href="?{{ query }}&amp;format=xlsx" hx-boost="false">Excel</a>
+    <a class="button secondary" href="?{{ query }}&amp;format=csv" hx-boost="false">CSV</a>
+    <button type="button" class="secondary" data-print>Print or PDF</button>
+  </div>
+  <p class="muted">Excel is formatted for reading and printing, with totals and a chart. CSV is
+    plain data for accounting or other software. The page address is this report: bookmark or
+    share it.</p>
 </section>
 {% endblock %}

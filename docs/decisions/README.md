@@ -31,6 +31,7 @@ Status: `Proposed` (my default, waiting on owner) · `Accepted` · `Superseded b
 | [0035](0035-sign-in-mode-and-owner-tools.md) | Sign-in mode per lab; owner tools in the admin | Accepted |
 | [0036](0036-ux-rules-and-one-look.md) | UX follows published rules; one look everywhere | Accepted |
 | [0037](0037-report-builder-and-motion.md) | Report builder; motion that can't block data | Accepted |
+| [0038](0038-professional-report-exports.md) | Formatted Excel, plain CSV, print to PDF | Accepted |
 
 Numbers 0017-0025, 0028-0029, 0031-0032 were reserved for parallel phases and not used.
 

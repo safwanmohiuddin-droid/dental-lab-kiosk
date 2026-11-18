@@ -18,7 +18,7 @@
   <header class="bar">
     <div class="who">
       <strong>{{ request.employee.name }}</strong>
-      <span class="muted">{{ request.employee.department.name }}</span>
+      <span class="dept">{{ request.employee.department.name }}</span>
     </div>
     <form method="post" action="{% url 'kiosk:sign_out' %}">
       {% csrf_token %}
