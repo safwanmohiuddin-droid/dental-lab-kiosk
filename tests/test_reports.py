@@ -181,8 +181,9 @@ def test_builder_updates_live_without_a_show_button(admin_client, material, empl
     # Two quick changes must not let an older answer overwrite a newer one.
     assert 'hx-sync="this:replace"' in html
     assert 'id="report-chart-data"' in html
-    visible = html.split("<noscript>")[0] + html.split("</noscript>")[1]
-    assert "<button" not in visible.split('class="bar"')[1]  # only the no-JavaScript fallback
+    form = html.split('class="sentence"')[1].split("</form>")[0]
+    visible = form.split("<noscript>")[0] + form.split("</noscript>")[1]
+    assert "<button" not in visible  # the form's only button is the no-JavaScript fallback
 
 
 def test_every_choice_changes_the_report(admin_client, material, employee):
@@ -217,15 +218,55 @@ def test_query_count_does_not_grow_with_rows(admin_client, employee, django_asse
         assert admin_client.get(DASHBOARD, params).status_code == 200
 
 
+def _sheet(admin_client, params):
+    response = admin_client.get(DASHBOARD, {**params, "format": "xlsx"})
+    return load_workbook(io.BytesIO(response.content))
+
+
 def test_export_matches_the_report_on_screen(admin_client, material, employee):
     services.receive(material, 10)
     services.issue(material, 3, employee)
     params = {"measure": "units", "by": "department", "every": "", "period": "this_month"}
-    xlsx = admin_client.get(DASHBOARD, {**params, "format": "xlsx"})
-    rows = list(load_workbook(io.BytesIO(xlsx.content)).active.values)
-    assert rows == [("Department", "Units used"), ("CAD/CAM", 3)]
+    ws = _sheet(admin_client, params)["Report"]
+    assert ws["A1"].value == "Units used by department"
+    assert "Filters: None" in ws["A3"].value and "admin" in ws["A4"].value
+    assert [c.value for c in ws[6]] == ["Department", "Units used"]
+    assert [c.value for c in ws[7]] == ["CAD/CAM", 3]
+    assert [c.value for c in ws[8]] == ["Total", "=SUM(B7:B7)"]  # a live total, not a typed one
     text = admin_client.get(DASHBOARD, {**params, "format": "csv"}).content.decode()
     assert list(csv.reader(io.StringIO(text)))[1] == ["CAD/CAM", "3.000"]
+
+
+def test_excel_export_is_ready_to_read_and_print(admin_client, material, employee):
+    services.receive(material, 10, unit_cost=D("2.50"))
+    services.issue(material, 3, employee)
+    params = {"measure": "cost", "by": "material", "every": "week", "period": "this_month"}
+    wb = _sheet(admin_client, params)
+    ws = wb["Report"]
+    width = ws.max_column
+    assert ws.cell(6, width).value == "Total"
+    assert ws.cell(7, width).value.startswith("=SUM(B7:")  # each row adds up its own periods
+    assert ws.cell(7, 2).number_format.startswith("#,##0.00")  # money: 2 decimals, separators
+    assert ws.freeze_panes == "B7" and ws.auto_filter.ref.startswith("A6:")
+    assert ws.print_title_rows == "$6:$6" and ws.print_title_cols == "$A:$A"
+    assert ws.page_setup.fitToWidth == 1  # a few weeks fit one page wide
+    assert "Chart" in wb.sheetnames and wb["Chart"]._charts
+    text = admin_client.get(DASHBOARD, {**params, "format": "csv"}).content.decode()
+    assert list(csv.reader(io.StringIO(text)))[0][-1] == "Total"
+
+
+def test_excel_export_of_a_plain_total_has_one_row(admin_client, material, employee):
+    services.receive(material, 10)
+    services.issue(material, 2, employee)
+    params = {"measure": "units", "by": "", "every": "", "period": "this_month"}
+    ws = _sheet(admin_client, params)["Report"]
+    assert [c.value for c in ws[7]] == ["Units used", 2]
+    assert ws["A8"].value is None  # no "Total" row repeating the only number
+
+
+def test_report_page_can_be_printed_with_its_title(admin_client, db):
+    html = admin_client.get(DASHBOARD, {"by": "person", "every": ""}).content.decode()
+    assert "data-print" in html and "<h2>Units used by person</h2>" in html
 
 
 def test_seed_moves_keeps_the_ledger_consistent(db, settings):

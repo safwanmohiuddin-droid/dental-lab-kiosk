@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Professional report downloads**: Excel now has a title block (report, dates, filters, who
+  downloaded it), a styled header with filter buttons, frozen headers, number formats, live
+  `SUM` totals, print setup (one page wide, header row on every page, page numbers) and a native
+  chart sheet. CSV stays plain data for other software. New "Print or PDF" button with print
+  styles. Readable department label on the kiosk, normal-size checkboxes.
 - **Report builder**: any measure (units used, cost, times taken) by any breakdown (department,
   material, person, category, case) per day, week or month, with filters; live chart and table,
   no Show button; the page address is the report; Excel and CSV export what's on screen.

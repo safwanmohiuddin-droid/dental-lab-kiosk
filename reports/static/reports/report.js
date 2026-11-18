@@ -46,6 +46,8 @@
     });
   }
 
+  // Print or save as PDF uses the browser's own dialog; the print styles in ui.css lay it out.
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-print]")) window.print(); });
   document.addEventListener("DOMContentLoaded", draw);
   document.addEventListener("htmx:afterSettle", draw);
 })();

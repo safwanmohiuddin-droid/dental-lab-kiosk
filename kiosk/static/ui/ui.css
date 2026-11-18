@@ -185,3 +185,23 @@ input[type="checkbox"], input[type="radio"] { width: 1.4rem; height: 1.4rem; min
 /* The department is who gets charged: a readable label, not faint grey text (owner feedback). */
 .dept { align-self: flex-start; margin-top: .2rem; padding: .1rem .65rem; border-radius: 999px;
         background: var(--ok-bg); color: var(--ok); font-size: .85rem; font-weight: 600; }
+
+/* Report downloads: three equal buttons in a row (they wrap on a narrow phone). */
+.downloads { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; }
+.downloads > * { flex: 1 1 8rem; width: auto; }
+
+/* Print or save as PDF: the report on white paper, without controls (ADR 0038). */
+.print-only { display: none; }
+@media print {
+  :root { --paper: #fff; --card: #fff; --ink: #000; --ink-soft: #444; --line: #bbb; color-scheme: light; }
+  @page { margin: 12mm; }
+  body { background: #fff; color: #000; }
+  .bar, .sentence, .downloads, .downloads + p, h1 { display: none !important; }
+  .print-only { display: block; }
+  .print-only h2 { margin: 0 0 .25rem; font: 400 1.7rem/1.2 var(--serif); }
+  .card { box-shadow: none; border: 1px solid var(--line); }
+  .table { overflow: visible; }
+  thead { display: table-header-group; }   /* header row on every page */
+  tr, .stat, .chart-card { break-inside: avoid; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
